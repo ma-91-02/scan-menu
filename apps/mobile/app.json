@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Menuza",
+    "slug": "menuza",
+    "scheme": "menuza",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#126b5d"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

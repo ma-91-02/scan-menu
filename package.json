@@ -1,0 +1,40 @@
+{
+  "name": "menuza",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Menuza multilingual restaurant ordering platform.",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "predev": "npm run build -w @menuza/shared",
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev -w @menuza/web -- -p 3000",
+    "dev:mobile": "npm run dev -w @menuza/mobile",
+    "dev:gateway": "npm run dev -w @menuza/api-gateway",
+    "dev:auth": "npm run dev -w @menuza/auth-service",
+    "dev:restaurants": "npm run dev -w @menuza/restaurant-service",
+    "dev:orders": "npm run dev -w @menuza/order-service",
+    "dev:translations": "npm run dev -w @menuza/translation-service",
+    "pretypecheck": "npm run build -w @menuza/shared",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~5.0.5",
+    "react-native-web": "^0.20.0"
+  }
+}

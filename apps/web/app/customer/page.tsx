@@ -1,0 +1,588 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { supportedLanguages } from "@menuza/shared";
+
+type ViewId = "menu" | "waiter" | "discounts" | "settings";
+type AuthMode = "login" | "register";
+
+interface Restaurant {
+  id: string;
+  name: string;
+  operatingLanguage: string;
+  supportedCustomerLanguages: string[];
+  status: string;
+}
+
+interface CustomerMenuItem {
+  id: string;
+  restaurantId: string;
+  displayName: string;
+  displayDescription: string;
+  price: number;
+  currency: string;
+}
+
+interface CustomerUser {
+  id: string;
+  name: string;
+  email?: string;
+}
+
+interface CustomerOrder {
+  id: string;
+  total: number;
+  currency: string;
+  displayLines?: Array<{
+    menuItemId: string;
+    quantity: number;
+    displayName?: string;
+    displayNote?: string;
+  }>;
+}
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
+const languageStorageKey = "menuza-customer-language";
+const customerStorageKey = "menuza-customer-user";
+const sessionStorageKey = "menuza-session";
+
+const fallbackRestaurants: Restaurant[] = [
+  {
+    id: "rst_bistro_01",
+    name: "Bistro Aurora",
+    operatingLanguage: "ru",
+    supportedCustomerLanguages: ["ar", "en", "ru", "tr"],
+    status: "active"
+  }
+];
+const defaultRestaurant = fallbackRestaurants[0]!;
+
+const fallbackMenu: CustomerMenuItem[] = [
+  {
+    id: "mi_salmon_bowl",
+    restaurantId: "rst_bistro_01",
+    displayName: "وعاء السلمون",
+    displayDescription: "أرز، سلمون، أفوكادو، خيار، سمسم.",
+    price: 18,
+    currency: "USD"
+  }
+];
+
+const translations = {
+  ar: {
+    chooseLanguage: "اختر لغتك",
+    languageHint: "يمكنك تغيير اللغة لاحقًا من الإعدادات.",
+    continue: "متابعة",
+    nearby: "مطاعم قريبة",
+    table: "الطاولة",
+    qr: "QR الطاولة",
+    pasteQr: "ألصق رابط QR",
+    apply: "تطبيق",
+    menu: "المنيو",
+    waiter: "النادل",
+    discounts: "الخصومات",
+    settings: "الإعدادات",
+    login: "دخول",
+    register: "تسجيل",
+    name: "الاسم",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    signedIn: "مسجل الدخول",
+    signOut: "تسجيل خروج",
+    authRequired: "سجّل أو ادخل أولًا لإرسال الطلب.",
+    orderNote: "ملاحظة الطلب",
+    add: "إضافة",
+    placeOrder: "إرسال الطلب",
+    cart: "السلة",
+    emptyCart: "أضف صنفًا واحدًا على الأقل.",
+    sending: "جاري إرسال الطلب...",
+    sent: "تم إرسال الطلب للمطعم بلغته.",
+    failed: "تعذر تنفيذ العملية.",
+    waiterTitle: "طلب النادل",
+    waiterBody: "اضغط لإرسال طلب نادل للطاولة الحالية.",
+    callWaiter: "اطلب نادل",
+    waiterSent: "تم إرسال طلب النادل.",
+    todayDiscounts: "خصومات اليوم",
+    scanHint: "يدعم الرابط: /customer?restaurantId=rst_bistro_01&table=5",
+    locationHint: "التصنيف الحالي تجريبي حسب مطاعم قريبة، ولاحقًا سنربطه بموقع المستخدم الحقيقي.",
+    restaurantLanguage: "لغة المطعم"
+  },
+  en: {
+    chooseLanguage: "Choose your language",
+    languageHint: "You can change it later in settings.",
+    continue: "Continue",
+    nearby: "Nearby restaurants",
+    table: "Table",
+    qr: "Table QR",
+    pasteQr: "Paste QR link",
+    apply: "Apply",
+    menu: "Menu",
+    waiter: "Waiter",
+    discounts: "Discounts",
+    settings: "Settings",
+    login: "Login",
+    register: "Register",
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    signedIn: "Signed in",
+    signOut: "Sign out",
+    authRequired: "Register or log in before ordering.",
+    orderNote: "Order note",
+    add: "Add",
+    placeOrder: "Place order",
+    cart: "Cart",
+    emptyCart: "Add at least one item.",
+    sending: "Sending order...",
+    sent: "Order sent to the restaurant in its language.",
+    failed: "Action failed.",
+    waiterTitle: "Call waiter",
+    waiterBody: "Send a waiter request for this table.",
+    callWaiter: "Call waiter",
+    waiterSent: "Waiter request sent.",
+    todayDiscounts: "Today's discounts",
+    scanHint: "Supported link: /customer?restaurantId=rst_bistro_01&table=5",
+    locationHint: "Nearby sorting is mocked for development; later it will use real customer location.",
+    restaurantLanguage: "Restaurant language"
+  },
+  ru: {
+    chooseLanguage: "Выберите язык",
+    languageHint: "Позже его можно изменить в настройках.",
+    continue: "Продолжить",
+    nearby: "Рестораны рядом",
+    table: "Стол",
+    qr: "QR стола",
+    pasteQr: "Вставьте QR ссылку",
+    apply: "Применить",
+    menu: "Меню",
+    waiter: "Официант",
+    discounts: "Скидки",
+    settings: "Настройки",
+    login: "Войти",
+    register: "Регистрация",
+    name: "Имя",
+    email: "Email",
+    password: "Пароль",
+    signedIn: "Вход выполнен",
+    signOut: "Выйти",
+    authRequired: "Зарегистрируйтесь или войдите перед заказом.",
+    orderNote: "Комментарий",
+    add: "Добавить",
+    placeOrder: "Отправить",
+    cart: "Корзина",
+    emptyCart: "Добавьте хотя бы одно блюдо.",
+    sending: "Отправка заказа...",
+    sent: "Заказ отправлен ресторану на его языке.",
+    failed: "Ошибка действия.",
+    waiterTitle: "Вызвать официанта",
+    waiterBody: "Отправьте запрос официанту для этого стола.",
+    callWaiter: "Вызвать",
+    waiterSent: "Запрос официанту отправлен.",
+    todayDiscounts: "Скидки дня",
+    scanHint: "Поддержка ссылки: /customer?restaurantId=rst_bistro_01&table=5",
+    locationHint: "Сортировка рядом пока тестовая; позже подключим реальную геолокацию.",
+    restaurantLanguage: "Язык ресторана"
+  }
+};
+
+export default function CustomerPage() {
+  const [language, setLanguage] = useState("");
+  const [activeView, setActiveView] = useState<ViewId>("menu");
+  const [authMode, setAuthMode] = useState<AuthMode>("register");
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(fallbackRestaurants);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState(defaultRestaurant.id);
+  const [tableNumber, setTableNumber] = useState("5");
+  const [qrInput, setQrInput] = useState("");
+  const [menu, setMenu] = useState<CustomerMenuItem[]>(fallbackMenu);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [note, setNote] = useState("no onions");
+  const [customer, setCustomer] = useState<CustomerUser | null>(null);
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [status, setStatus] = useState("");
+  const [lastOrder, setLastOrder] = useState<CustomerOrder | null>(null);
+
+  const selectedRestaurant = restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ?? defaultRestaurant;
+  const currentLanguage = language || "ar";
+  const t = translations[currentLanguage as keyof typeof translations] ?? translations.en;
+  const isRtl = ["ar", "ur", "fa", "he"].includes(currentLanguage);
+  const quantity = Object.values(cart).reduce((sum, value) => sum + value, 0);
+  const total = useMemo(
+    () => menu.reduce((sum, item) => sum + item.price * (cart[item.id] ?? 0), 0),
+    [cart, menu]
+  );
+  const tabs: Array<{ id: ViewId; label: string; icon: string }> = [
+    { id: "menu", label: t.menu, icon: "≡" },
+    { id: "waiter", label: t.waiter, icon: "!" },
+    { id: "discounts", label: t.discounts, icon: "%" },
+    { id: "settings", label: t.settings, icon: "⚙" }
+  ];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlLanguage = params.get("lang");
+    const storedLanguage = localStorage.getItem(languageStorageKey);
+    const storedCustomer = localStorage.getItem(customerStorageKey);
+    const restaurantFromQr = params.get("restaurantId");
+    const tableFromQr = params.get("table");
+
+    if (urlLanguage || storedLanguage) {
+      setLanguage(urlLanguage || storedLanguage || "ar");
+    }
+
+    if (storedCustomer) {
+      setCustomer(JSON.parse(storedCustomer));
+    }
+
+    if (restaurantFromQr) {
+      setSelectedRestaurantId(restaurantFromQr);
+    }
+
+    if (tableFromQr) {
+      setTableNumber(tableFromQr);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (language) {
+      localStorage.setItem(languageStorageKey, language);
+    }
+  }, [language]);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/restaurants`)
+      .then((response) => response.json())
+      .then((payload) => {
+        const data = payload.data?.length ? payload.data : fallbackRestaurants;
+        setRestaurants(data);
+        setSelectedRestaurantId((current) => (data.some((item: Restaurant) => item.id === current) ? current : data[0].id));
+      })
+      .catch(() => setRestaurants(fallbackRestaurants));
+  }, []);
+
+  useEffect(() => {
+    if (!language) {
+      return;
+    }
+
+    setCart({});
+    setLastOrder(null);
+    fetch(`${apiUrl}/restaurants/${selectedRestaurantId}/menu?language=${language}`)
+      .then((response) => response.json())
+      .then((payload) => setMenu(payload.data?.length ? payload.data : fallbackMenu))
+      .catch(() => setMenu(fallbackMenu));
+  }, [language, selectedRestaurantId]);
+
+  async function submitAuth() {
+    setStatus("");
+
+    if (authMode === "login") {
+      const response = await fetch(`${apiUrl}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: authEmail, password: authPassword })
+      });
+      const payload = await response.json();
+
+      if (!response.ok || payload.data.user.role !== "customer") {
+        setStatus(payload.error ?? t.failed);
+        return;
+      }
+
+      const user = { id: payload.data.user.id, name: payload.data.user.name, email: payload.data.user.email };
+      localStorage.setItem(sessionStorageKey, payload.data.session.id);
+      localStorage.setItem(customerStorageKey, JSON.stringify(user));
+      setCustomer(user);
+      setStatus(`${t.signedIn}: ${user.name}`);
+      return;
+    }
+
+    if (!authName.trim() || !authEmail.trim()) {
+      setStatus(t.failed);
+      return;
+    }
+
+    const response = await fetch(`${apiUrl}/auth/register/customer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: authName,
+        email: authEmail,
+        username: `${authEmail.split("@")[0]}-${Date.now()}`,
+        preferredLanguage: currentLanguage
+      })
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      setStatus(payload.error ?? t.failed);
+      return;
+    }
+
+    const user = { id: payload.data.user.id, name: payload.data.user.name, email: payload.data.user.email };
+    localStorage.setItem(sessionStorageKey, payload.data.session.id);
+    localStorage.setItem(customerStorageKey, JSON.stringify(user));
+    setCustomer(user);
+    setStatus(`${t.signedIn}: ${user.name}`);
+  }
+
+  function signOut() {
+    localStorage.removeItem(customerStorageKey);
+    localStorage.removeItem(sessionStorageKey);
+    setCustomer(null);
+    setStatus("");
+  }
+
+  function applyQrLink() {
+    try {
+      const url = new URL(qrInput, window.location.origin);
+      const restaurantId = url.searchParams.get("restaurantId");
+      const table = url.searchParams.get("table");
+
+      if (restaurantId) {
+        setSelectedRestaurantId(restaurantId);
+      }
+
+      if (table) {
+        setTableNumber(table);
+      }
+    } catch {
+      setStatus(t.failed);
+    }
+  }
+
+  async function placeOrder() {
+    if (!customer) {
+      setStatus(t.authRequired);
+      return;
+    }
+
+    if (!quantity) {
+      setStatus(t.emptyCart);
+      return;
+    }
+
+    setStatus(t.sending);
+
+    const lines = Object.entries(cart)
+      .filter(([, itemQuantity]) => itemQuantity > 0)
+      .map(([menuItemId, itemQuantity]) => ({
+        menuItemId,
+        quantity: itemQuantity,
+        customerNote: `${note}; table ${tableNumber}`
+      }));
+
+    const response = await fetch(`${apiUrl}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        restaurantId: selectedRestaurant.id,
+        customerId: customer.id,
+        customerLanguage: currentLanguage,
+        restaurantLanguage: selectedRestaurant.operatingLanguage,
+        lines
+      })
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      setStatus(payload.error ?? t.failed);
+      return;
+    }
+
+    setLastOrder(payload.data);
+    setCart({});
+    setStatus(t.sent);
+  }
+
+  if (!language) {
+    return (
+      <main className="customer-app-shell">
+        <section className="customer-phone language-onboarding">
+          <span>Menuza</span>
+          <h1>{translations.ar.chooseLanguage}</h1>
+          <p>{translations.ar.languageHint}</p>
+          <div className="language-choice-grid">
+            {supportedLanguages.slice(0, 8).map((item) => (
+              <button key={item.code} type="button" onClick={() => setLanguage(String(item.code))}>
+                {item.nativeName}
+              </button>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="customer-app-shell" dir={isRtl ? "rtl" : "ltr"}>
+      <section className="customer-phone">
+        <header className="customer-mobile-top">
+          <div>
+            <span>Menuza</span>
+            <strong>{selectedRestaurant.name}</strong>
+          </div>
+          <button type="button" onClick={() => setActiveView("settings")}>
+            ⚙
+          </button>
+        </header>
+
+        <section className="customer-location-card">
+          <div>
+            <span>{t.table} {tableNumber}</span>
+            <strong>{t.restaurantLanguage}: {selectedRestaurant.operatingLanguage.toUpperCase()}</strong>
+            <small>{t.locationHint}</small>
+          </div>
+          <button type="button" onClick={() => setActiveView("settings")}>
+            {t.qr}
+          </button>
+        </section>
+
+        {!customer ? (
+          <section className="mobile-auth-card">
+            <div className="mobile-segment">
+              <button className={authMode === "register" ? "active" : ""} type="button" onClick={() => setAuthMode("register")}>
+                {t.register}
+              </button>
+              <button className={authMode === "login" ? "active" : ""} type="button" onClick={() => setAuthMode("login")}>
+                {t.login}
+              </button>
+            </div>
+            {authMode === "register" ? (
+              <input placeholder={t.name} value={authName} onChange={(event) => setAuthName(event.target.value)} />
+            ) : null}
+            <input placeholder={t.email} value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} />
+            {authMode === "login" ? (
+              <input placeholder={t.password} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+            ) : null}
+            <button type="button" onClick={submitAuth}>
+              {authMode === "login" ? t.login : t.register}
+            </button>
+          </section>
+        ) : (
+          <section className="mobile-user-card">
+            <span>{t.signedIn}</span>
+            <strong>{customer.name}</strong>
+            <button type="button" onClick={signOut}>{t.signOut}</button>
+          </section>
+        )}
+
+        <section className="customer-mobile-content">
+          {activeView === "menu" ? (
+            <>
+              <div className="mobile-section-title">
+                <span>{t.nearby}</span>
+                <strong>{t.menu}</strong>
+              </div>
+              <div className="mobile-restaurant-strip">
+                {restaurants.map((restaurant, index) => (
+                  <button
+                    className={restaurant.id === selectedRestaurantId ? "active" : ""}
+                    key={restaurant.id}
+                    type="button"
+                    onClick={() => setSelectedRestaurantId(restaurant.id)}
+                  >
+                    <span>{restaurant.name}</span>
+                    <small>{index + 1}.{index + 4} km</small>
+                  </button>
+                ))}
+              </div>
+              <div className="mobile-menu-list">
+                {menu.map((item) => (
+                  <article className="mobile-menu-item" key={item.id}>
+                    <div className="mobile-food-photo">{item.displayName.slice(0, 1)}</div>
+                    <div>
+                      <h3>{item.displayName}</h3>
+                      <p>{item.displayDescription}</p>
+                      <footer>
+                        <strong>{item.price} {item.currency}</strong>
+                        <button
+                          type="button"
+                          onClick={() => setCart((current) => ({ ...current, [item.id]: (current[item.id] ?? 0) + 1 }))}
+                        >
+                          {t.add}
+                        </button>
+                      </footer>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {activeView === "waiter" ? (
+            <section className="mobile-action-panel">
+              <h2>{t.waiterTitle}</h2>
+              <p>{t.waiterBody}</p>
+              <button type="button" onClick={() => setStatus(t.waiterSent)}>{t.callWaiter}</button>
+            </section>
+          ) : null}
+
+          {activeView === "discounts" ? (
+            <section className="mobile-discount-list">
+              <h2>{t.todayDiscounts}</h2>
+              {menu.slice(0, 3).map((item, index) => (
+                <article key={item.id}>
+                  <span>{item.displayName}</span>
+                  <strong>{[10, 15, 5][index]}%</strong>
+                </article>
+              ))}
+            </section>
+          ) : null}
+
+          {activeView === "settings" ? (
+            <section className="mobile-settings">
+              <label>
+                {t.chooseLanguage}
+                <select value={currentLanguage} onChange={(event) => setLanguage(event.target.value)}>
+                  {supportedLanguages.slice(0, 8).map((item) => (
+                    <option key={item.code} value={String(item.code)}>
+                      {item.nativeName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t.pasteQr}
+                <input value={qrInput} onChange={(event) => setQrInput(event.target.value)} placeholder="/customer?restaurantId=rst_bistro_01&table=5" />
+              </label>
+              <button type="button" onClick={applyQrLink}>{t.apply}</button>
+              <small>{t.scanHint}</small>
+            </section>
+          ) : null}
+        </section>
+
+        <section className="mobile-cart-bar">
+          <div>
+            <span>{t.cart}</span>
+            <strong>{quantity} / {total} USD</strong>
+          </div>
+          <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.orderNote} />
+          <button type="button" onClick={placeOrder}>{t.placeOrder}</button>
+        </section>
+
+        {status ? <p className="mobile-status">{status}</p> : null}
+        {lastOrder ? (
+          <section className="mobile-receipt">
+            <strong>#{lastOrder.id}</strong>
+            {lastOrder.displayLines?.map((line) => (
+              <span key={line.menuItemId}>
+                {line.quantity} {line.displayName} {line.displayNote ? `- ${line.displayNote}` : ""}
+              </span>
+            ))}
+          </section>
+        ) : null}
+
+        <nav className="mobile-bottom-tabs">
+          {tabs.map((tab) => (
+            <button className={activeView === tab.id ? "active" : ""} key={tab.id} type="button" onClick={() => setActiveView(tab.id)}>
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </section>
+    </main>
+  );
+}
