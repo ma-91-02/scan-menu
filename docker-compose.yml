@@ -54,6 +54,12 @@ services:
       - restaurant-service
       - order-service
       - translation-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scanmenu-api.rule=Host(`api.scanmenu.your-ma.com`)"
+      - "traefik.http.routers.scanmenu-api.entrypoints=websecure"
+      - "traefik.http.routers.scanmenu-api.tls=true"
+      - "traefik.http.services.scanmenu-api.loadbalancer.server.port=4000"
 
   web:
     build: .
@@ -63,6 +69,12 @@ services:
       WEB_PUBLIC_API_URL: http://api-gateway:4000
     depends_on:
       - api-gateway
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scanmenu-web.rule=Host(`scanmenu.your-ma.com`)"
+      - "traefik.http.routers.scanmenu-web.entrypoints=websecure"
+      - "traefik.http.routers.scanmenu-web.tls=true"
+      - "traefik.http.services.scanmenu-web.loadbalancer.server.port=3000"
 
 volumes:
   scanmenu_postgres:
