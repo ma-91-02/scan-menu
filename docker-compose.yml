@@ -2,18 +2,67 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: menuza
-      POSTGRES_USER: menuza
-      POSTGRES_PASSWORD: menuza
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: scanmenu
+      POSTGRES_USER: scanmenu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - menuza_postgres:/var/lib/postgresql/data
+      - scanmenu_postgres:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+
+  auth-service:
+    build: .
+    command: npm run start -w @menuza/auth-service
+    environment:
+      NODE_ENV: production
+      AUTH_SERVICE_PORT: 4101
+
+  restaurant-service:
+    build: .
+    command: npm run start -w @menuza/restaurant-service
+    environment:
+      NODE_ENV: production
+      RESTAURANT_SERVICE_PORT: 4102
+
+  order-service:
+    build: .
+    command: npm run start -w @menuza/order-service
+    environment:
+      NODE_ENV: production
+      ORDER_SERVICE_PORT: 4103
+
+  translation-service:
+    build: .
+    command: npm run start -w @menuza/translation-service
+    environment:
+      NODE_ENV: production
+      TRANSLATION_SERVICE_PORT: 4104
+
+  api-gateway:
+    build: .
+    command: npm run start -w @menuza/api-gateway
+    environment:
+      NODE_ENV: production
+      API_GATEWAY_PORT: 4000
+      AUTH_SERVICE_URL: http://auth-service:4101
+      RESTAURANT_SERVICE_URL: http://restaurant-service:4102
+      ORDER_SERVICE_URL: http://order-service:4103
+      TRANSLATION_SERVICE_URL: http://translation-service:4104
+    depends_on:
+      - auth-service
+      - restaurant-service
+      - order-service
+      - translation-service
+
+  web:
+    build: .
+    command: npm run start -w @menuza/web
+    environment:
+      NODE_ENV: production
+      WEB_PUBLIC_API_URL: http://api-gateway:4000
+    depends_on:
+      - api-gateway
 
 volumes:
-  menuza_postgres:
+  scanmenu_postgres:
