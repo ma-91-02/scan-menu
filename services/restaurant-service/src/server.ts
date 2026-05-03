@@ -1,153 +1,110 @@
 import cors from "cors";
 import express from "express";
-import type { MenuItem, Restaurant } from "@scanmenu/shared";
-import { pickLocalizedText } from "@scanmenu/shared";
+import type { Ingredient, LocalizedText, MenuCategory, MenuItem, Restaurant, SubscriptionPlan } from "@scanmenu/shared";
+import { ingredientTaxonomy, pickCatalogTranslation, pickLocalizedText, scanMenuLanguages } from "@scanmenu/shared";
+import {
+  createCategoryDb,
+  createMenuItemDb,
+  createTableDb,
+  deleteCategoryDb,
+  deleteMenuItemDb,
+  getCategoriesDb,
+  getMenuItemsDb,
+  getRestaurantDb,
+  getRestaurantsDb,
+  getTablesDb,
+  hasRestaurantDb,
+  initRestaurantDatabase,
+  updateCategoryDb,
+  updateMenuItemDb,
+  updateRestaurantProfileDb,
+  type RestaurantRecord,
+  type RestaurantTableRecord
+} from "./db.js";
 
-const restaurants: Restaurant[] = [
+interface RestaurantProfile extends Restaurant {
+  ownerFirstName: string;
+  ownerLastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  country: string;
+  city: string;
+  selectedPlan: SubscriptionPlan["id"];
+}
+
+interface RestaurantTable {
+  id: string;
+  restaurantId: string;
+  number: string;
+  qrPath: string;
+}
+
+const plans: SubscriptionPlan[] = [
+  {
+    id: "basic",
+    name: "Basic",
+    priceMonthly: 0,
+    features: ["Testing/demo", "Limited menu items", "Limited tables"],
+    limits: { menuItems: 10, tables: 3, branches: 1 }
+  },
+  {
+    id: "standard",
+    name: "Standard",
+    priceMonthly: 19.99,
+    features: ["Small restaurants", "Multilingual menu", "Basic orders"],
+    limits: { menuItems: 50, tables: 15, branches: 1 }
+  },
+  {
+    id: "premium",
+    name: "Premium",
+    priceMonthly: 29.99,
+    features: ["Real-time kitchen/cashier", "Staff roles", "More tables"],
+    limits: { menuItems: 150, tables: 50, branches: 1 }
+  },
+  {
+    id: "gold",
+    name: "Gold",
+    priceMonthly: 49.99,
+    features: ["Multi-branch", "Advanced monitoring", "Priority features"],
+    limits: { menuItems: "unlimited", tables: "unlimited", branches: "unlimited" }
+  }
+];
+
+const restaurants: RestaurantProfile[] = [
   {
     id: "rst_bistro_01",
     name: "Bistro Aurora",
     operatingLanguage: "ru",
     supportedCustomerLanguages: ["ar", "en", "ru", "tr"],
-    status: "active"
-  },
-  {
-    id: "rst_sham_02",
-    name: "Sham Garden",
-    operatingLanguage: "ar",
-    supportedCustomerLanguages: ["ar", "en", "ru", "tr"],
-    status: "active"
-  },
-  {
-    id: "rst_istanbul_03",
-    name: "Istanbul Grill",
-    operatingLanguage: "tr",
-    supportedCustomerLanguages: ["ar", "en", "ru", "tr"],
-    status: "active"
+    status: "active",
+    ownerFirstName: "Anna",
+    ownerLastName: "Petrova",
+    email: "owner@bistro.local",
+    phone: "+7 900 100 20 30",
+    address: "Tverskaya 10",
+    country: "Russia",
+    city: "Moscow",
+    selectedPlan: "premium"
   }
 ];
 
-const menuItems: MenuItem[] = [
-  {
-    id: "mi_salmon_bowl",
-    restaurantId: "rst_bistro_01",
-    name: { en: "Salmon Bowl", ar: "وعاء السلمون", ru: "Боул с лососем", tr: "Somon kasesi" },
-    description: {
-      en: "Rice, salmon, avocado, cucumber, sesame.",
-      ar: "أرز، سلمون، أفوكادو، خيار، سمسم.",
-      ru: "Рис, лосось, авокадо, огурец, кунжут.",
-      tr: "Pirinç, somon, avokado, salatalık, susam."
-    },
-    price: 18,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_lentil_soup",
-    restaurantId: "rst_bistro_01",
-    name: { en: "Lentil Soup", ar: "شوربة العدس", ru: "Чечевичный суп", tr: "Mercimek çorbası" },
-    description: {
-      en: "Warm lentil soup with lemon and herbs.",
-      ar: "شوربة عدس دافئة مع الليمون والأعشاب.",
-      ru: "Теплый чечевичный суп с лимоном и зеленью.",
-      tr: "Limon ve otlarla sıcak mercimek çorbası."
-    },
-    price: 7,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_kebab_plate",
-    restaurantId: "rst_sham_02",
-    name: { en: "Kebab Plate", ar: "طبق كباب", ru: "Кебаб тарелка", tr: "Kebap tabağı" },
-    description: {
-      en: "Grilled kebab, rice, salad, and garlic sauce.",
-      ar: "كباب مشوي، أرز، سلطة، وصلصة ثوم.",
-      ru: "Кебаб на гриле, рис, салат и чесночный соус.",
-      tr: "Izgara kebap, pilav, salata ve sarımsak sosu."
-    },
-    price: 16,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_fattoush",
-    restaurantId: "rst_sham_02",
-    name: { en: "Fattoush", ar: "فتوش", ru: "Фаттуш", tr: "Fattuş" },
-    description: {
-      en: "Fresh vegetables, toasted bread, sumac dressing.",
-      ar: "خضار طازجة، خبز محمص، وصلصة سماق.",
-      ru: "Свежие овощи, поджаренный хлеб, соус с сумахом.",
-      tr: "Taze sebze, kızarmış ekmek, sumak sosu."
-    },
-    price: 6,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_adana_wrap",
-    restaurantId: "rst_istanbul_03",
-    name: { en: "Adana Wrap", ar: "راب أضنة", ru: "Адана ролл", tr: "Adana dürüm" },
-    description: {
-      en: "Spiced minced meat wrap with herbs and tomato.",
-      ar: "راب لحم متبل مع أعشاب وطماطم.",
-      ru: "Ролл с пряным фаршем, зеленью и томатом.",
-      tr: "Baharatlı kıyma, yeşillik ve domatesli dürüm."
-    },
-    price: 12,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_ayran",
-    restaurantId: "rst_istanbul_03",
-    name: { en: "Ayran", ar: "عيران", ru: "Айран", tr: "Ayran" },
-    description: {
-      en: "Cold yogurt drink.",
-      ar: "مشروب لبن بارد.",
-      ru: "Холодный йогуртовый напиток.",
-      tr: "Soğuk yoğurt içeceği."
-    },
-    price: 3,
-    currency: "USD",
-    isAvailable: true
-  }
-];
+const categories: MenuCategory[] = [];
+const ingredients: Ingredient[] = [];
 
-const catalogCategories = [
-  {
-    id: "cat_meat",
-    name: { en: "Meat", ar: "اللحوم", ru: "Мясо", tr: "Et" }
-  },
-  {
-    id: "cat_chicken",
-    name: { en: "Chicken", ar: "الدجاج", ru: "Курица", tr: "Tavuk" }
-  },
-  {
-    id: "cat_drinks",
-    name: { en: "Cold Drinks", ar: "المشروبات الباردة", ru: "Холодные напитки", tr: "Soğuk içecekler" }
-  },
-  {
-    id: "cat_salads",
-    name: { en: "Salads", ar: "السلطات", ru: "Салаты", tr: "Salatalar" }
-  },
-  {
-    id: "cat_fish",
-    name: { en: "Fish", ar: "الأسماك", ru: "Рыба", tr: "Balık" }
-  }
-];
+const menuItems: MenuItem[] = [];
 
-const catalogIngredients = [
-  { id: "ing_onion", name: { en: "Onion", ar: "بصل", ru: "Лук", tr: "Soğan" } },
-  { id: "ing_tomato", name: { en: "Tomato", ar: "طماطم", ru: "Помидор", tr: "Domates" } },
-  { id: "ing_garlic", name: { en: "Garlic sauce", ar: "صلصة الثوم", ru: "Чесночный соус", tr: "Sarımsak sosu" } },
-  { id: "ing_cheese", name: { en: "Cheese", ar: "جبن", ru: "Сыр", tr: "Peynir" } },
-  { id: "ing_spicy", name: { en: "Spicy sauce", ar: "صلصة حارة", ru: "Острый соус", tr: "Acı sos" } },
-  { id: "ing_lemon", name: { en: "Lemon", ar: "ليمون", ru: "Лимон", tr: "Limon" } }
+const tables: RestaurantTable[] = [
+  { id: "tbl_5", restaurantId: "rst_bistro_01", number: "5", qrPath: "/customer?restaurantId=rst_bistro_01&table=5" },
+  { id: "tbl_6", restaurantId: "rst_bistro_01", number: "6", qrPath: "/customer?restaurantId=rst_bistro_01&table=6" }
 ];
 
 const app = express();
 const port = Number(process.env.RESTAURANT_SERVICE_PORT ?? 4102);
+const translationServiceUrl = process.env.TRANSLATION_SERVICE_URL ?? "http://localhost:4104";
+const dbReady = initRestaurantDatabase().catch((error) => {
+  console.error("Restaurant database init failed; using in-memory fallback", error);
+});
 
 app.use(cors());
 app.use(express.json());
@@ -156,75 +113,169 @@ app.get("/health", (_req, res) => {
   res.json({ data: { service: "restaurant-service", status: "ok" } });
 });
 
-app.get("/", (_req, res) => {
-  res.json({ data: restaurants });
+app.get("/", async (_req, res) => {
+  await dbReady;
+  res.json({ data: hasRestaurantDb() ? await getRestaurantsDb() : restaurants });
 });
 
-app.get("/catalog/categories", (req, res) => {
-  const language = String(req.query.language ?? "en");
-  const query = String(req.query.q ?? "").trim().toLowerCase();
-  const data = catalogCategories
-    .map((category) => ({
-      ...category,
-      displayName: pickLocalizedText(category.name, language)
-    }))
-    .filter((category) => !query || Object.values(category.name).some((value) => value.toLowerCase().includes(query)));
-
-  res.json({ data });
+app.get("/plans", (_req, res) => {
+  res.json({ data: plans });
 });
 
-app.get("/catalog/ingredients", (req, res) => {
-  const language = String(req.query.language ?? "en");
-  const query = String(req.query.q ?? "").trim().toLowerCase();
-  const data = catalogIngredients
-    .map((ingredient) => ({
-      ...ingredient,
-      displayName: pickLocalizedText(ingredient.name, language)
-    }))
-    .filter((ingredient) => !query || Object.values(ingredient.name).some((value) => value.toLowerCase().includes(query)));
-
-  res.json({ data });
+app.get("/:restaurantId", async (req, res) => {
+  await dbReady;
+  const restaurant = await loadRestaurant(req.params.restaurantId);
+  if (!restaurant) {
+    res.status(404).json({ error: "Restaurant not found" });
+    return;
+  }
+  res.json({ data: restaurant });
 });
 
-app.get("/:restaurantId", (req, res) => {
-  const restaurant = restaurants.find((item) => item.id === req.params.restaurantId);
-
+app.patch("/:restaurantId/profile", async (req, res) => {
+  await dbReady;
+  const restaurant = await loadRestaurant(req.params.restaurantId);
   if (!restaurant) {
     res.status(404).json({ error: "Restaurant not found" });
     return;
   }
 
+  const patch = {
+    ownerFirstName: readString(req.body.ownerFirstName, restaurant.ownerFirstName),
+    ownerLastName: readString(req.body.ownerLastName, restaurant.ownerLastName),
+    email: readString(req.body.email, restaurant.email).toLowerCase(),
+    name: readString(req.body.restaurantName, restaurant.name),
+    phone: readString(req.body.phone, restaurant.phone),
+    address: readString(req.body.address, restaurant.address),
+    country: readString(req.body.country, restaurant.country),
+    city: readString(req.body.city, restaurant.city)
+  };
+
+  if (hasRestaurantDb()) {
+    res.json({ data: await updateRestaurantProfileDb(req.params.restaurantId, patch) });
+    return;
+  }
+
+  Object.assign(restaurant, patch);
   res.json({ data: restaurant });
 });
 
-app.patch("/:restaurantId/language", (req, res) => {
-  const restaurant = restaurants.find((item) => item.id === req.params.restaurantId);
+app.patch(["/:restaurantId/plan", "/:restaurantId/subscription"], async (req, res) => {
+  await dbReady;
+  const restaurantId = String(req.params.restaurantId);
+  const restaurant = await loadRestaurant(restaurantId);
+  const requestedPlan = String(req.body.planId ?? req.body.plan ?? "");
+  const plan = plans.find((item) => item.id === requestedPlan);
 
+  if (!restaurant || !plan) {
+    res.status(404).json({ error: "Restaurant or plan not found" });
+    return;
+  }
+
+  const updatedRestaurant = hasRestaurantDb()
+    ? await updateRestaurantProfileDb(restaurantId, { selectedPlan: plan.id })
+    : Object.assign(restaurant, { selectedPlan: plan.id });
+  res.json({ data: { restaurant: updatedRestaurant, plan } });
+});
+
+app.patch("/:restaurantId/language", async (req, res) => {
+  await dbReady;
+  const restaurant = await loadRestaurant(req.params.restaurantId);
   if (!restaurant) {
     res.status(404).json({ error: "Restaurant not found" });
     return;
   }
 
-  restaurant.operatingLanguage = String(req.body.operatingLanguage ?? restaurant.operatingLanguage);
-  res.json({ data: restaurant });
+  const operatingLanguage = String(req.body.operatingLanguage ?? restaurant.operatingLanguage);
+  const updatedRestaurant = hasRestaurantDb()
+    ? await updateRestaurantProfileDb(req.params.restaurantId, { operatingLanguage })
+    : Object.assign(restaurant, { operatingLanguage });
+  res.json({ data: updatedRestaurant });
 });
 
-app.get("/:restaurantId/menu", (req, res) => {
-  const language = String(req.query.language ?? "en");
-  const restaurantMenu = menuItems
-    .filter((item) => item.restaurantId === req.params.restaurantId && item.isAvailable)
-    .map((item) => ({
-      ...item,
-      displayName: pickLocalizedText(item.name, language),
-      displayDescription: pickLocalizedText(item.description, language)
-    }));
-
-  res.json({ data: restaurantMenu });
+app.get("/:restaurantId/catalog/categories", async (req, res) => {
+  await dbReady;
+  const entries = hasRestaurantDb() ? await getCategoriesDb(req.params.restaurantId) : categories;
+  res.json({ data: localizeEntries(entries, req.params.restaurantId, String(req.query.language ?? "en"), String(req.query.q ?? "")) });
 });
 
-app.post("/:restaurantId/menu", (req, res) => {
-  const restaurant = restaurants.find((item) => item.id === req.params.restaurantId);
+app.post("/:restaurantId/catalog/categories", async (req, res) => {
+  await dbReady;
+  const entry = await createLocalizedEntry<MenuCategory>(req.params.restaurantId, "cat", req.body.name, req.body.language);
+  if (hasRestaurantDb()) {
+    await createCategoryDb(entry);
+  } else {
+    categories.push(entry);
+  }
+  res.status(201).json({ data: localizeEntry(entry, String(req.body.language ?? "en")) });
+});
 
+app.patch("/:restaurantId/catalog/categories/:categoryId", async (req, res) => {
+  await dbReady;
+  const entries = hasRestaurantDb() ? await getCategoriesDb(req.params.restaurantId) : categories;
+  const entry = entries.find((item) => item.id === req.params.categoryId && item.restaurantId === req.params.restaurantId);
+  if (!entry) {
+    res.status(404).json({ error: "Category not found" });
+    return;
+  }
+
+  entry.name = await buildLocalizedText(String(req.body.name ?? pickLocalizedText(entry.name, String(req.body.language ?? "en"))), String(req.body.language ?? "en"));
+  if (hasRestaurantDb()) {
+    await updateCategoryDb(entry);
+  }
+  res.json({ data: localizeEntry(entry, String(req.body.language ?? "en")) });
+});
+
+app.delete("/:restaurantId/catalog/categories/:categoryId", async (req, res) => {
+  await dbReady;
+  if (hasRestaurantDb()) {
+    await deleteCategoryDb(req.params.restaurantId, req.params.categoryId);
+  } else {
+    const index = categories.findIndex((item) => item.id === req.params.categoryId && item.restaurantId === req.params.restaurantId);
+    if (index >= 0) {
+      categories.splice(index, 1);
+    }
+  }
+  res.json({ data: { ok: true } });
+});
+
+app.get("/:restaurantId/catalog/ingredients", (req, res) => {
+  res.json({ data: localizeEntries(ingredients, req.params.restaurantId, String(req.query.language ?? "en"), String(req.query.q ?? "")) });
+});
+
+app.post("/:restaurantId/catalog/ingredients", async (req, res) => {
+  const entry = await createLocalizedEntry<Ingredient>(req.params.restaurantId, "ing", req.body.name, req.body.language);
+  ingredients.push(entry);
+  res.status(201).json({ data: localizeEntry(entry, String(req.body.language ?? "en")) });
+});
+
+app.patch("/:restaurantId/catalog/ingredients/:ingredientId", async (req, res) => {
+  const entry = ingredients.find((item) => item.id === req.params.ingredientId && item.restaurantId === req.params.restaurantId);
+  if (!entry) {
+    res.status(404).json({ error: "Ingredient not found" });
+    return;
+  }
+
+  entry.name = await buildLocalizedText(String(req.body.name ?? pickLocalizedText(entry.name, String(req.body.language ?? "en"))), String(req.body.language ?? "en"));
+  res.json({ data: localizeEntry(entry, String(req.body.language ?? "en")) });
+});
+
+app.delete("/:restaurantId/catalog/ingredients/:ingredientId", (req, res) => {
+  const index = ingredients.findIndex((item) => item.id === req.params.ingredientId && item.restaurantId === req.params.restaurantId);
+  if (index >= 0) {
+    ingredients.splice(index, 1);
+  }
+  res.json({ data: { ok: true } });
+});
+
+app.get("/:restaurantId/menu", async (req, res) => {
+  await dbReady;
+  res.json({ data: await getLocalizedMenu(req.params.restaurantId, String(req.query.language ?? "en")) });
+});
+
+app.post("/:restaurantId/menu", async (req, res) => {
+  await dbReady;
+  const restaurant = await loadRestaurant(req.params.restaurantId);
   if (!restaurant) {
     res.status(404).json({ error: "Restaurant not found" });
     return;
@@ -234,8 +285,8 @@ app.post("/:restaurantId/menu", (req, res) => {
   const name = String(req.body.name ?? "").trim();
   const price = Number(req.body.price ?? 0);
 
-  if (!name) {
-    res.status(400).json({ error: "Menu item name is required" });
+  if (!name || price < 0) {
+    res.status(400).json({ error: "Valid menu item name and price are required" });
     return;
   }
 
@@ -244,23 +295,182 @@ app.post("/:restaurantId/menu", (req, res) => {
     restaurantId: restaurant.id,
     categoryId: String(req.body.categoryId ?? ""),
     ingredientIds: Array.isArray(req.body.ingredientIds) ? req.body.ingredientIds.map(String) : [],
-    name: { [language]: name, en: name },
-    description: {},
+    name: await buildLocalizedText(name, language),
+    description: await buildLocalizedText(String(req.body.description ?? ""), language),
     price,
     currency: "USD",
     isAvailable: true
   };
 
-  menuItems.push(item);
+  if (req.body.imageUrl) {
+    (item as MenuItem & { imageUrl?: string }).imageUrl = String(req.body.imageUrl);
+  }
 
-  res.status(201).json({
-    data: {
-      ...item,
-      displayName: pickLocalizedText(item.name, language),
-      displayDescription: ""
-    }
-  });
+  if (hasRestaurantDb()) {
+    await createMenuItemDb(item);
+  } else {
+    menuItems.push(item);
+  }
+  res.status(201).json({ data: localizeMenuItem(item, language) });
 });
+
+app.patch("/:restaurantId/menu/:menuItemId", async (req, res) => {
+  await dbReady;
+  const items = hasRestaurantDb() ? await getMenuItemsDb(req.params.restaurantId) : menuItems;
+  const item = items.find((entry) => entry.id === req.params.menuItemId && entry.restaurantId === req.params.restaurantId);
+  if (!item) {
+    res.status(404).json({ error: "Menu item not found" });
+    return;
+  }
+
+  const language = String(req.body.language ?? "en");
+  if (req.body.name) item.name = await buildLocalizedText(String(req.body.name), language);
+  if (req.body.description) item.description = await buildLocalizedText(String(req.body.description), language);
+  if (req.body.categoryId !== undefined) item.categoryId = String(req.body.categoryId);
+  if (Array.isArray(req.body.ingredientIds)) item.ingredientIds = req.body.ingredientIds.map(String);
+  if (req.body.price !== undefined) item.price = Number(req.body.price);
+  if (req.body.isAvailable !== undefined) item.isAvailable = Boolean(req.body.isAvailable);
+  if (req.body.imageUrl !== undefined) item.imageUrl = String(req.body.imageUrl);
+  if (hasRestaurantDb()) {
+    await updateMenuItemDb(item);
+  }
+
+  res.json({ data: localizeMenuItem(item, language) });
+});
+
+app.delete("/:restaurantId/menu/:menuItemId", async (req, res) => {
+  await dbReady;
+  if (hasRestaurantDb()) {
+    await deleteMenuItemDb(req.params.restaurantId, req.params.menuItemId);
+  } else {
+    const index = menuItems.findIndex((entry) => entry.id === req.params.menuItemId && entry.restaurantId === req.params.restaurantId);
+    if (index >= 0) {
+      menuItems.splice(index, 1);
+    }
+  }
+  res.json({ data: { ok: true } });
+});
+
+app.get("/:restaurantId/tables", async (req, res) => {
+  await dbReady;
+  res.json({ data: hasRestaurantDb() ? await getTablesDb(req.params.restaurantId) : tables.filter((table) => table.restaurantId === req.params.restaurantId) });
+});
+
+app.post("/:restaurantId/tables", async (req, res) => {
+  await dbReady;
+  const number = String(req.body.number ?? req.body.tableNumber ?? "").trim();
+  if (!number) {
+    res.status(400).json({ error: "Table number is required" });
+    return;
+  }
+
+  const table: RestaurantTableRecord = {
+    id: `tbl_${Date.now()}`,
+    restaurantId: req.params.restaurantId,
+    number,
+    qrPath: `/customer?restaurantId=${encodeURIComponent(req.params.restaurantId)}&table=${encodeURIComponent(number)}`
+  };
+  const savedTable = hasRestaurantDb() ? await createTableDb(table) : table;
+  if (!hasRestaurantDb()) tables.push(savedTable);
+  res.status(201).json({ data: { ...savedTable, tableNumber: savedTable.number, qrCode: savedTable.qrPath } });
+});
+
+function findRestaurant(id: string) {
+  return restaurants.find((item) => item.id === id);
+}
+
+async function loadRestaurant(id: string): Promise<RestaurantRecord | RestaurantProfile | undefined> {
+  return hasRestaurantDb() ? getRestaurantDb(id) : findRestaurant(id);
+}
+
+function readString(value: unknown, fallback: string) {
+  const nextValue = String(value ?? "").trim();
+  return nextValue || fallback;
+}
+
+function localizeEntries<T extends MenuCategory | Ingredient>(entries: T[], restaurantId: string, language: string, query: string) {
+  const value = query.trim().toLowerCase();
+  return entries
+    .filter((entry) => entry.restaurantId === restaurantId)
+    .map((entry) => localizeEntry(entry, language))
+    .filter((entry) => !value || Object.values(entry.name).some((name) => String(name).toLowerCase().includes(value)));
+}
+
+function localizeEntry<T extends MenuCategory | Ingredient>(entry: T, language: string) {
+  return {
+    ...entry,
+    displayName: pickLocalizedText(entry.name, language)
+  };
+}
+
+async function createLocalizedEntry<T extends MenuCategory | Ingredient>(restaurantId: string, prefix: string, name: unknown, language: unknown): Promise<T> {
+  const ownerLanguage = String(language ?? "en");
+  const text = String(name ?? "").trim();
+
+  if (!text) {
+    throw new Error("Name is required");
+  }
+
+  return {
+    id: `${prefix}_${Date.now()}`,
+    restaurantId,
+    name: await buildLocalizedText(text, ownerLanguage)
+  } as T;
+}
+
+async function getLocalizedMenu(restaurantId: string, language: string) {
+  const items = hasRestaurantDb() ? await getMenuItemsDb(restaurantId) : menuItems;
+  return items
+    .filter((item) => item.restaurantId === restaurantId && item.isAvailable)
+    .map((item) => localizeMenuItem(item, language));
+}
+
+function localizeMenuItem(item: MenuItem, language: string) {
+  const itemIngredients = ingredientTaxonomy.filter((ingredient) => item.ingredientIds?.includes(ingredient.id));
+  return {
+    ...item,
+    displayName: pickLocalizedText(item.name, language),
+    displayDescription: pickLocalizedText(item.description, language),
+    ingredients: itemIngredients.map((ingredient) => ({
+      id: ingredient.id,
+      restaurantId: item.restaurantId,
+      name: ingredient.translations,
+      displayName: pickCatalogTranslation(ingredient.translations, language)
+    }))
+  };
+}
+
+async function buildLocalizedText(text: string, sourceLanguage: string): Promise<LocalizedText> {
+  const value = text.trim();
+  const localized: LocalizedText = { [sourceLanguage]: value };
+  const targetLanguages = scanMenuLanguages.map((language) => language.code).filter((language) => language !== sourceLanguage);
+
+  await Promise.all(
+    targetLanguages.map(async (targetLanguage) => {
+      localized[targetLanguage] = await translateText(value, sourceLanguage, targetLanguage);
+    })
+  );
+
+  return localized;
+}
+
+async function translateText(text: string, sourceLanguage: string, targetLanguage: string) {
+  if (!text) {
+    return "";
+  }
+
+  try {
+    const response = await fetch(`${translationServiceUrl}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, sourceLanguage, targetLanguage })
+    });
+    const payload = (await response.json()) as { data?: { translatedText?: string } };
+    return response.ok && payload.data?.translatedText ? payload.data.translatedText : text;
+  } catch {
+    return text;
+  }
+}
 
 app.listen(port, () => {
   console.log(`Restaurant service listening on http://localhost:${port}`);

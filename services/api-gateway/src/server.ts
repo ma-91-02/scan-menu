@@ -2,7 +2,6 @@ import cors from "cors";
 import express from "express";
 import { createProxyMiddleware, fixRequestBody } from "http-proxy-middleware";
 
-const app = express();
 const port = Number(process.env.API_GATEWAY_PORT ?? 4000);
 
 const services = {
@@ -12,19 +11,6 @@ const services = {
   translations: process.env.TRANSLATION_SERVICE_URL ?? "http://localhost:4104"
 };
 
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.json({
-    data: {
-      service: "api-gateway",
-      status: "ok",
-      services
-    }
-  });
-});
-
 const proxyOptions = {
   changeOrigin: true,
   on: {
@@ -32,17 +18,39 @@ const proxyOptions = {
   }
 };
 
-app.use("/auth", createProxyMiddleware({ target: services.auth, ...proxyOptions }));
-app.use(
-  "/restaurants",
-  createProxyMiddleware({ target: services.restaurants, ...proxyOptions })
-);
-app.use("/orders", createProxyMiddleware({ target: services.orders, ...proxyOptions }));
-app.use(
-  "/translations",
-  createProxyMiddleware({ target: services.translations, ...proxyOptions })
-);
+export function createApp(targets = services) {
+  const app = express();
 
-app.listen(port, () => {
-  console.log(`Scan Menu API Gateway listening on http://localhost:${port}`);
-});
+  app.use(cors());
+  app.use(express.json());
+
+  app.get("/health", (_req, res) => {
+    res.json({
+      data: {
+        service: "api-gateway",
+        status: "ok"
+      }
+    });
+  });
+
+  app.use("/auth", createProxyMiddleware({ target: targets.auth, ...proxyOptions }));
+  app.use(
+    "/restaurants",
+    createProxyMiddleware({ target: targets.restaurants, ...proxyOptions })
+  );
+  app.use("/orders", createProxyMiddleware({ target: targets.orders, ...proxyOptions }));
+  app.use(
+    "/translations",
+    createProxyMiddleware({ target: targets.translations, ...proxyOptions })
+  );
+
+  return app;
+}
+
+const app = createApp();
+
+if (!process.env.SCANMENU_SKIP_LISTEN) {
+  app.listen(port, () => {
+    console.log(`Scan Menu API Gateway listening on http://localhost:${port}`);
+  });
+}

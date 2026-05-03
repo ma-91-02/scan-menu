@@ -1,7 +1,16 @@
 import cors from "cors";
 import express from "express";
-import type { LanguageCode, MenuItem, Order, OrderLine, Restaurant } from "@scanmenu/shared";
-import { pickLocalizedText } from "@scanmenu/shared";
+import type { LanguageCode, LocalizedText, MenuItem, Order, OrderLine, Restaurant } from "@scanmenu/shared";
+import { ingredientTaxonomy, pickCatalogTranslation, pickLocalizedText } from "@scanmenu/shared";
+import {
+  createOrderDb,
+  getMenuItemsDb,
+  getOrdersDb,
+  getRestaurantLanguageDb,
+  hasOrderDb,
+  initOrderDatabase,
+  updateOrderDb
+} from "./db.js";
 
 const restaurants: Pick<Restaurant, "id" | "operatingLanguage">[] = [
   { id: "rst_bistro_01", operatingLanguage: "ru" },
@@ -9,10 +18,19 @@ const restaurants: Pick<Restaurant, "id" | "operatingLanguage">[] = [
   { id: "rst_istanbul_03", operatingLanguage: "tr" }
 ];
 
+const ingredients: Array<{ id: string; restaurantId: string; name: LocalizedText }> = [
+  { id: "ing_onion", restaurantId: "rst_bistro_01", name: { en: "Onion", ar: "بصل", ru: "Лук", tr: "Soğan" } },
+  { id: "ing_tomato", restaurantId: "rst_bistro_01", name: { en: "Tomato", ar: "طماطم", ru: "Помидор", tr: "Domates" } },
+  { id: "ing_garlic", restaurantId: "rst_bistro_01", name: { en: "Garlic sauce", ar: "صلصة الثوم", ru: "Чесночный соус", tr: "Sarımsak sosu" } },
+  { id: "ing_lemon", restaurantId: "rst_bistro_01", name: { en: "Lemon", ar: "ليمون", ru: "Лимон", tr: "Limon" } }
+];
+
 const menuCatalog: MenuItem[] = [
   {
     id: "mi_salmon_bowl",
     restaurantId: "rst_bistro_01",
+    categoryId: "cat_fish",
+    ingredientIds: ["ing_onion", "ing_tomato", "ing_lemon"],
     name: { en: "Salmon Bowl", ar: "وعاء السلمون", ru: "Боул с лососем", tr: "Somon kasesi" },
     description: {},
     price: 18,
@@ -22,45 +40,11 @@ const menuCatalog: MenuItem[] = [
   {
     id: "mi_lentil_soup",
     restaurantId: "rst_bistro_01",
+    categoryId: "cat_soups",
+    ingredientIds: ["ing_onion", "ing_lemon"],
     name: { en: "Lentil Soup", ar: "شوربة العدس", ru: "Чечевичный суп", tr: "Mercimek çorbası" },
     description: {},
     price: 7,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_kebab_plate",
-    restaurantId: "rst_sham_02",
-    name: { en: "Kebab Plate", ar: "طبق كباب", ru: "Кебаб тарелка", tr: "Kebap tabağı" },
-    description: {},
-    price: 16,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_fattoush",
-    restaurantId: "rst_sham_02",
-    name: { en: "Fattoush", ar: "فتوش", ru: "Фаттуш", tr: "Fattuş" },
-    description: {},
-    price: 6,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_adana_wrap",
-    restaurantId: "rst_istanbul_03",
-    name: { en: "Adana Wrap", ar: "راب أضنة", ru: "Адана ролл", tr: "Adana dürüm" },
-    description: {},
-    price: 12,
-    currency: "USD",
-    isAvailable: true
-  },
-  {
-    id: "mi_ayran",
-    restaurantId: "rst_istanbul_03",
-    name: { en: "Ayran", ar: "عيران", ru: "Айран", tr: "Ayran" },
-    description: {},
-    price: 3,
     currency: "USD",
     isAvailable: true
   }
@@ -68,8 +52,9 @@ const menuCatalog: MenuItem[] = [
 
 const noteTranslations: Record<string, Record<string, string>> = {
   "no onions": { ar: "بدون بصل", en: "no onions", ru: "без лука", tr: "soğansız" },
+  "no onion": { ar: "بدون بصل", en: "no onion", ru: "без лука", tr: "soğansız" },
   spicy: { ar: "حار", en: "spicy", ru: "острое", tr: "acı" },
-  "extra sauce": { ar: "صلصة إضافية", en: "extra sauce", ru: "дополнительный соус", tr: "ekstra sos" }
+  waiter: { ar: "طلب نادل", en: "waiter request", ru: "вызов официанта", tr: "garson çağrısı" }
 };
 
 const orders: Order[] = [
@@ -77,9 +62,13 @@ const orders: Order[] = [
     id: "ord_1001",
     restaurantId: "rst_bistro_01",
     customerId: "usr_customer",
+    tableNumber: "5",
     customerLanguage: "ar",
     restaurantLanguage: "ru",
     status: "placed",
+    paymentMethod: "cash",
+    paymentStatus: "unpaid",
+    type: "order",
     lines: [
       {
         menuItemId: "mi_salmon_bowl",
@@ -87,7 +76,16 @@ const orders: Order[] = [
         customerItemName: "وعاء السلمون",
         restaurantItemName: "Боул с лососем",
         customerNote: "بدون بصل",
-        restaurantNote: "без лука"
+        restaurantNote: "без лука",
+        ingredientNames: [
+          { en: "Onion", ar: "بصل", ru: "Лук", tr: "Soğan" },
+          { en: "Tomato", ar: "طماطم", ru: "Помидор", tr: "Domates" }
+        ],
+        removedIngredientIds: ["ing_onion"],
+        removedIngredientNames: [{ en: "Onion", ar: "بصل", ru: "Лук", tr: "Soğan" }],
+        customerRemovedIngredients: ["بصل"],
+        restaurantRemovedIngredients: ["Лук"],
+        kitchenStatus: "pending"
       }
     ],
     total: 18,
@@ -96,87 +94,283 @@ const orders: Order[] = [
   }
 ];
 
-const app = express();
 const port = Number(process.env.ORDER_SERVICE_PORT ?? 4103);
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.json({ data: { service: "order-service", status: "ok" } });
+const translationServiceUrl = process.env.TRANSLATION_SERVICE_URL ?? "http://localhost:4104";
+const restaurantServiceUrl = process.env.RESTAURANT_SERVICE_URL ?? "http://localhost:4102";
+const clients = new Set<express.Response>();
+const dbReady = initOrderDatabase().catch((error) => {
+  console.error("Order database init failed; using in-memory fallback", error);
 });
 
-app.get("/", (req, res) => {
-  const restaurantId = req.query.restaurantId ? String(req.query.restaurantId) : undefined;
-  const customerId = req.query.customerId ? String(req.query.customerId) : undefined;
-  const language = req.query.language ? String(req.query.language) : undefined;
-  const data = orders
+interface OrderServiceOptions {
+  translationServiceUrl?: string;
+}
+
+export function createApp(options: OrderServiceOptions = {}) {
+  const app = express();
+  const translationsUrl = options.translationServiceUrl ?? translationServiceUrl;
+
+  app.use(cors());
+  app.use(express.json());
+
+  app.get("/health", (_req, res) => {
+    res.json({ data: { service: "order-service", status: "ok" } });
+  });
+
+  app.get("/events", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+    clients.add(res);
+    void getLocalizedOrders(req.query).then((snapshot) => sendEvent(res, "snapshot", snapshot));
+    req.on("close", () => clients.delete(res));
+  });
+
+  app.get("/", async (req, res) => {
+    await dbReady;
+    res.json({ data: await getLocalizedOrders(req.query) });
+  });
+
+  app.post("/", async (req, res) => {
+    await dbReady;
+    const restaurantId = String(req.body.restaurantId ?? "rst_bistro_01");
+    const customerLanguage = String(req.body.customerLanguage ?? "en") as LanguageCode | string;
+    const restaurantLanguage =
+      String(req.body.restaurantLanguage ?? (hasOrderDb() ? await getRestaurantLanguageDb(restaurantId) : restaurants.find((item) => item.id === restaurantId)?.operatingLanguage) ?? "en") as
+        | LanguageCode
+        | string;
+    const requestedLines = Array.isArray(req.body.lines) ? (req.body.lines as OrderLine[]) : [];
+
+    if (!requestedLines.length) {
+      res.status(400).json({ error: "Order must include at least one line" });
+      return;
+    }
+
+    const lines = await Promise.all(
+      requestedLines.map((line) => translateLine(restaurantId, line, customerLanguage, restaurantLanguage, translationsUrl))
+    );
+    const menuItems = await loadMenuItems(restaurantId);
+    const total = lines.reduce((sum, line) => {
+      const menuItem = menuItems.find((item) => item.id === line.menuItemId);
+      return sum + (menuItem?.price ?? 0) * Number(line.quantity || 0);
+    }, 0);
+
+    const order: Order = {
+      id: `ord_${Date.now()}`,
+      restaurantId,
+      customerId: String(req.body.customerId ?? "usr_customer"),
+      tableNumber: req.body.tableNumber ? String(req.body.tableNumber) : undefined,
+      customerLanguage,
+      restaurantLanguage,
+      status: "placed",
+      paymentMethod: req.body.paymentMethod === "card" ? "card" : "cash",
+      paymentStatus: "unpaid",
+      type: lines.some((line) => line.menuItemId === "waiter_request") ? "waiter_request" : "order",
+      lines,
+      total,
+      currency: "USD",
+      createdAt: new Date().toISOString()
+    };
+
+    if (hasOrderDb()) await createOrderDb(order);
+    else orders.unshift(order);
+    await broadcastOrders();
+    res.status(201).json({ data: localizeOrder(order, restaurantLanguage) });
+  });
+
+  app.patch("/:orderId/status", async (req, res) => {
+    await dbReady;
+    const order = await findOrder(req.params.orderId);
+
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    const nextStatus = String(req.body.status ?? order.status) as Order["status"];
+    if (!["placed", "accepted", "preparing", "ready", "completed", "cancelled"].includes(nextStatus)) {
+      res.status(400).json({ error: "Invalid order status" });
+      return;
+    }
+
+    order.status = nextStatus;
+    if (hasOrderDb()) await updateOrderDb(order);
+    await broadcastOrders();
+    res.json({ data: localizeOrder(order, order.restaurantLanguage) });
+  });
+
+  app.patch("/:orderId/lines/:menuItemId/status", async (req, res) => {
+    await dbReady;
+    const order = await findOrder(req.params.orderId);
+    const line = order?.lines.find((item) => item.menuItemId === req.params.menuItemId);
+    const nextStatus = String(req.body.kitchenStatus ?? "preparing") as NonNullable<OrderLine["kitchenStatus"]>;
+
+    if (!order || !line) {
+      res.status(404).json({ error: "Order line not found" });
+      return;
+    }
+
+    if (!["pending", "preparing", "ready"].includes(nextStatus)) {
+      res.status(400).json({ error: "Invalid kitchen status" });
+      return;
+    }
+
+    line.kitchenStatus = nextStatus;
+    order.status = order.lines.every((item) => item.kitchenStatus === "ready") ? "ready" : "preparing";
+    if (hasOrderDb()) await updateOrderDb(order);
+    await broadcastOrders();
+    res.json({ data: localizeOrder(order, order.restaurantLanguage) });
+  });
+
+  app.patch("/:orderId/payment", async (req, res) => {
+    await dbReady;
+    const order = await findOrder(req.params.orderId);
+
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    order.paymentMethod = req.body.paymentMethod === "card" ? "card" : "cash";
+    order.paymentStatus = req.body.paymentStatus === "paid" ? "paid" : "unpaid";
+    if (hasOrderDb()) await updateOrderDb(order);
+    await broadcastOrders();
+    res.json({ data: localizeOrder(order, order.restaurantLanguage) });
+  });
+
+  app.patch("/waiter-requests/:orderId/done", async (req, res) => {
+    await dbReady;
+    const order = await findOrder(req.params.orderId);
+
+    if (!order) {
+      res.status(404).json({ error: "Waiter request not found" });
+      return;
+    }
+
+    if (order.type !== "waiter_request") {
+      res.status(404).json({ error: "Waiter request not found" });
+      return;
+    }
+    order.status = "completed";
+    if (hasOrderDb()) await updateOrderDb(order);
+    await broadcastOrders();
+    res.json({ data: localizeOrder(order, order.restaurantLanguage) });
+  });
+
+  return app;
+}
+
+async function getLocalizedOrders(query: Record<string, unknown>) {
+  const restaurantId = query.restaurantId ? String(query.restaurantId) : undefined;
+  const customerId = query.customerId ? String(query.customerId) : undefined;
+  const language = query.language ? String(query.language) : undefined;
+  const sourceOrders = hasOrderDb() ? await getOrdersDb({ restaurantId, customerId }) : orders;
+  return sourceOrders
     .filter((order) => !restaurantId || order.restaurantId === restaurantId)
     .filter((order) => !customerId || order.customerId === customerId)
     .map((order) => localizeOrder(order, language ?? order.restaurantLanguage));
+}
 
-  res.json({ data });
-});
-
-app.post("/", (req, res) => {
-  const restaurantId = String(req.body.restaurantId ?? "rst_bistro_01");
-  const customerLanguage = String(req.body.customerLanguage ?? "en") as LanguageCode | string;
-  const restaurantLanguage =
-    String(req.body.restaurantLanguage ?? restaurants.find((item) => item.id === restaurantId)?.operatingLanguage ?? "en") as
-      | LanguageCode
-      | string;
-  const requestedLines = (req.body.lines ?? []) as OrderLine[];
-  const lines = requestedLines.map((line) => translateLine(restaurantId, line, customerLanguage, restaurantLanguage));
-  const total = lines.reduce((sum, line) => {
-    const menuItem = menuCatalog.find((item) => item.id === line.menuItemId);
-    return sum + (menuItem?.price ?? 0) * line.quantity;
-  }, 0);
-
-  const order: Order = {
-    id: `ord_${Date.now()}`,
-    restaurantId,
-    customerId: String(req.body.customerId ?? "usr_customer"),
-    customerLanguage,
-    restaurantLanguage,
-    status: "placed",
-    lines,
-    total,
-    currency: "USD",
-    createdAt: new Date().toISOString()
-  };
-
-  orders.unshift(order);
-  res.status(201).json({ data: localizeOrder(order, restaurantLanguage) });
-});
-
-app.patch("/:orderId/status", (req, res) => {
-  const order = orders.find((item) => item.id === req.params.orderId);
-
-  if (!order) {
-    res.status(404).json({ error: "Order not found" });
-    return;
+async function findOrder(orderId: string) {
+  if (hasOrderDb()) {
+    return (await getOrdersDb({})).find((item) => item.id === orderId);
   }
 
-  order.status = req.body.status ?? order.status;
-  res.json({ data: order });
-});
+  return orders.find((item) => item.id === orderId);
+}
 
-function translateLine(
+async function loadMenuItems(restaurantId: string) {
+  if (hasOrderDb()) {
+    return getMenuItemsDb(restaurantId);
+  }
+
+  if (process.env.SCANMENU_SKIP_LISTEN && !process.env.RESTAURANT_SERVICE_URL) {
+    return menuCatalog.filter((item) => item.restaurantId === restaurantId);
+  }
+
+  try {
+    const response = await fetch(`${restaurantServiceUrl}/${restaurantId}/menu?language=en`);
+    const payload = (await response.json()) as { data?: MenuItem[] };
+    if (response.ok && Array.isArray(payload.data)) {
+      return payload.data;
+    }
+  } catch {
+    return menuCatalog.filter((item) => item.restaurantId === restaurantId);
+  }
+
+  return menuCatalog.filter((item) => item.restaurantId === restaurantId);
+}
+
+async function translateLine(
   restaurantId: string,
   line: OrderLine,
   customerLanguage: string,
-  restaurantLanguage: string
-): OrderLine {
-  const menuItem = menuCatalog.find((item) => item.id === line.menuItemId && item.restaurantId === restaurantId);
-  const noteKey = String(line.customerNote ?? "").trim().toLowerCase();
+  restaurantLanguage: string,
+  translationsUrl: string
+): Promise<OrderLine> {
+  const menuItems = await loadMenuItems(restaurantId);
+  const menuItem = menuItems.find((item) => item.id === line.menuItemId && item.restaurantId === restaurantId);
   const isWaiterRequest = line.menuItemId === "waiter_request";
+  const itemIngredients = ingredientTaxonomy
+    .filter((ingredient) => menuItem?.ingredientIds?.includes(ingredient.id))
+    .map((ingredient) => ({ id: ingredient.id, restaurantId, name: ingredient.translations as LocalizedText }));
+  const removedIngredientIds = Array.isArray(line.removedIngredientIds) ? line.removedIngredientIds.map(String) : [];
+  const removedIngredientNames = itemIngredients
+    .filter((ingredient) => removedIngredientIds.includes(ingredient.id))
+    .map((ingredient) => ingredient.name);
 
   return {
     ...line,
-    customerItemName: isWaiterRequest ? "Waiter request" : menuItem ? pickLocalizedText(menuItem.name, customerLanguage) : line.customerItemName,
-    restaurantItemName: isWaiterRequest ? "Waiter request" : menuItem ? pickLocalizedText(menuItem.name, restaurantLanguage) : line.restaurantItemName,
-    restaurantNote: noteTranslations[noteKey]?.[restaurantLanguage] ?? line.restaurantNote ?? line.customerNote
+    quantity: Number(line.quantity || 1),
+    customerItemName: isWaiterRequest
+      ? await translateText("Waiter request", "en", customerLanguage, translationsUrl)
+      : menuItem
+        ? pickLocalizedText(menuItem.name, customerLanguage)
+        : line.customerItemName,
+    restaurantItemName: isWaiterRequest
+      ? await translateText("Waiter request", "en", restaurantLanguage, translationsUrl)
+      : menuItem
+        ? pickLocalizedText(menuItem.name, restaurantLanguage)
+        : line.restaurantItemName,
+    ingredientNames: itemIngredients.map((ingredient) => ingredient.name),
+    removedIngredientIds,
+    removedIngredientNames,
+    customerRemovedIngredients: removedIngredientNames.map((name) => pickLocalizedText(name, customerLanguage)),
+    restaurantRemovedIngredients: removedIngredientNames.map((name) => pickLocalizedText(name, restaurantLanguage)),
+    restaurantNote: await translateText(line.customerNote, customerLanguage, restaurantLanguage, translationsUrl),
+    kitchenStatus: line.kitchenStatus ?? "pending"
   };
+}
+
+async function translateText(
+  text: string | undefined,
+  sourceLanguage: string,
+  targetLanguage: string,
+  translationsUrl: string
+) {
+  const value = String(text ?? "").trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const response = await fetch(`${translationsUrl}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: value, sourceLanguage, targetLanguage })
+    });
+    const payload = (await response.json()) as { data?: { translatedText?: string } };
+
+    if (response.ok && payload.data?.translatedText) {
+      return payload.data.translatedText;
+    }
+  } catch {
+    return noteTranslations[value.toLowerCase()]?.[targetLanguage] ?? value;
+  }
+
+  return noteTranslations[value.toLowerCase()]?.[targetLanguage] ?? value;
 }
 
 function localizeOrder(order: Order, language: string) {
@@ -195,11 +389,29 @@ function localizeOrder(order: Order, language: string) {
           ? line.restaurantNote
           : language === order.customerLanguage
             ? line.customerNote
-            : line.restaurantNote ?? line.customerNote
+            : line.restaurantNote ?? line.customerNote,
+      displayIngredients: line.ingredientNames?.map((name) => pickLocalizedText(name, language)),
+      displayRemovedIngredients: line.removedIngredientNames?.map((name) => pickLocalizedText(name, language))
     }))
   };
 }
 
-app.listen(port, () => {
-  console.log(`Order service listening on http://localhost:${port}`);
-});
+function sendEvent(res: express.Response, event: string, data: unknown) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify({ data })}\n\n`);
+}
+
+async function broadcastOrders() {
+  const snapshot = await getLocalizedOrders({});
+  for (const client of clients) {
+    sendEvent(client, "orders", snapshot);
+  }
+}
+
+const app = createApp();
+
+if (!process.env.SCANMENU_SKIP_LISTEN) {
+  app.listen(port, () => {
+    console.log(`Order service listening on http://localhost:${port}`);
+  });
+}

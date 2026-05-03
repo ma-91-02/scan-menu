@@ -1,6 +1,18 @@
 import cors from "cors";
 import express from "express";
 import type { UserRole } from "@scanmenu/shared";
+import {
+  createSessionDb,
+  createUserDb,
+  deleteSessionDb,
+  findUserDb,
+  getSessionDb,
+  getUsersDb,
+  hasAuthDb,
+  initAuthDatabase,
+  type AuthSessionRecord,
+  type AuthUserRecord
+} from "./db.js";
 
 interface DemoUser {
   id: string;
@@ -101,22 +113,52 @@ const users: DemoUser[] = [
 ];
 
 const sessions = new Map<string, DemoSession>();
+const restaurantRoles = ["owner", "manager", "cashier", "kitchen", "waiter", "viewer"] as const;
+type RestaurantRole = (typeof restaurantRoles)[number];
 
-const app = express();
+const rolePermissions: Record<RestaurantRole, string[]> = {
+  owner: ["*"],
+  manager: ["menu:write", "orders:read", "orders:update", "staff:write", "profile:write"],
+  cashier: ["orders:read", "orders:update", "payments:write", "cashier:read"],
+  kitchen: ["orders:read", "orders:update", "kitchen:read"],
+  waiter: ["orders:read", "waiter:read", "waiter:update"],
+  viewer: ["orders:read"]
+};
+
 const port = Number(process.env.AUTH_SERVICE_PORT ?? 4101);
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.json({ data: { service: "auth-service", status: "ok" } });
+const dbReady = initAuthDatabase(users as AuthUserRecord[]).catch((error) => {
+  console.error("Auth database init failed; using in-memory fallback", error);
 });
 
-app.get("/users", (_req, res) => {
-  res.json({ data: users });
-});
+export function createApp() {
+  const app = express();
 
-app.post("/register/customer", (req, res) => {
+  app.use(cors());
+  app.use(express.json());
+
+  app.get("/health", (_req, res) => {
+    res.json({ data: { service: "auth-service", status: "ok" } });
+  });
+
+  app.get("/users", async (_req, res) => {
+    await dbReady;
+    res.json({ data: hasAuthDb() ? await getUsersDb() : users });
+  });
+
+  app.get("/permissions", (_req, res) => {
+    res.json({ data: rolePermissions });
+  });
+
+  app.get("/restaurants/:restaurantId/staff", async (req, res) => {
+    await dbReady;
+    const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
+    res.json({
+      data: sourceUsers.filter((user) => user.restaurantId === req.params.restaurantId && isRestaurantRole(user.role))
+    });
+  });
+
+  app.post("/register/customer", async (req, res) => {
+  await dbReady;
   const email = String(req.body.email ?? "customer@example.com").trim().toLowerCase();
   const username = uniqueUsername(String(req.body.username ?? email.split("@")[0] ?? "customer"));
   const phone = String(req.body.phone ?? "").trim();
@@ -128,7 +170,7 @@ app.post("/register/customer", (req, res) => {
     return;
   }
 
-  if (isIdentityTaken({ email, phone, username })) {
+  if (await isIdentityTaken({ email, phone, username })) {
     res.status(409).json({ error: "Email, phone, or username is already registered" });
     return;
   }
@@ -143,8 +185,9 @@ app.post("/register/customer", (req, res) => {
     preferredLanguage: String(req.body.preferredLanguage ?? "en")
   };
 
-  users.push(user);
-  const session = createSession(user.id);
+  if (hasAuthDb()) await createUserDb(user);
+  else users.push(user);
+  const session = await createSession(user.id);
 
   res.status(201).json({
     data: {
@@ -154,27 +197,40 @@ app.post("/register/customer", (req, res) => {
       redirectTo: getRedirectForRole(user.role)
     }
   });
-});
+  });
 
-app.post("/register/staff", (req, res) => {
-  const email = String(req.body.email ?? "staff@example.com").trim();
+  app.post("/register/staff", async (req, res) => {
+  await dbReady;
+  const email = String(req.body.email ?? "staff@example.com").trim().toLowerCase();
   const username = uniqueUsername(String(req.body.username ?? email.split("@")[0] ?? "staff"));
+  const requestedRole = String(req.body.role ?? "viewer");
+  const role = restaurantRoles.includes(requestedRole as RestaurantRole) ? (requestedRole as RestaurantRole) : "viewer";
+  const restaurantId = String(req.body.restaurantId ?? "rst_bistro_01");
+
+  if (await isIdentityTaken({ email, username })) {
+    res.status(409).json({ error: "Email, phone, or username is already registered" });
+    return;
+  }
 
   const user: DemoUser = {
     id: `usr_${Date.now()}`,
     name: String(req.body.name ?? "Staff Member"),
     username,
     email,
-    role: (req.body.role ?? "staff") as UserRole,
+    role,
     preferredLanguage: String(req.body.preferredLanguage ?? "en"),
-    restaurantId: String(req.body.restaurantId ?? "rst_bistro_01")
+    restaurantId,
+    restaurantName: String(req.body.restaurantName ?? "Bistro Aurora"),
+    permissions: rolePermissions[role]
   };
 
-  users.push(user);
+  if (hasAuthDb()) await createUserDb(user);
+  else users.push(user);
   res.status(201).json({ data: user });
-});
+  });
 
-app.post("/register/restaurant", (req, res) => {
+  app.post("/register/restaurant", async (req, res) => {
+  await dbReady;
   const firstName = String(req.body.firstName ?? "").trim();
   const lastName = String(req.body.lastName ?? "").trim();
   const restaurantName = String(req.body.restaurantName ?? "").trim();
@@ -184,9 +240,16 @@ app.post("/register/restaurant", (req, res) => {
   const username = uniqueUsername(requestedUsername || restaurantName || email.split("@")[0] || "restaurant");
   const password = String(req.body.password ?? "");
   const confirmPassword = String(req.body.confirmPassword ?? "");
+  const termsAccepted = Boolean(req.body.termsAccepted);
+  const privacyAccepted = Boolean(req.body.privacyAccepted);
 
   if (!firstName || !restaurantName || !phone || !password) {
     res.status(400).json({ error: "Missing required restaurant registration fields" });
+    return;
+  }
+
+  if (!termsAccepted || !privacyAccepted) {
+    res.status(400).json({ error: "Terms of Use and Privacy Policy consent is required" });
     return;
   }
 
@@ -195,7 +258,7 @@ app.post("/register/restaurant", (req, res) => {
     return;
   }
 
-  if (isIdentityTaken({ email, phone, username })) {
+  if (await isIdentityTaken({ email, phone, username })) {
     res.status(409).json({ error: "Email, phone, or username is already registered" });
     return;
   }
@@ -212,8 +275,9 @@ app.post("/register/restaurant", (req, res) => {
     restaurantName
   };
 
-  users.push(user);
-  const session = createSession(user.id);
+  if (hasAuthDb()) await createUserDb(user);
+  else users.push(user);
+  const session = await createSession(user.id);
 
   res.status(201).json({
     data: {
@@ -223,9 +287,10 @@ app.post("/register/restaurant", (req, res) => {
       redirectTo: getRedirectForRole(user.role)
     }
   });
-});
+  });
 
-app.post("/login", (req, res) => {
+  app.post("/login", async (req, res) => {
+  await dbReady;
   const identifier = String(req.body.identifier ?? "").trim().toLowerCase();
 
   if (!identifier || !String(req.body.password ?? "")) {
@@ -233,13 +298,13 @@ app.post("/login", (req, res) => {
     return;
   }
 
-  const user = findUserByIdentifier(identifier);
+  const user = await findUserByIdentifier(identifier);
 
   if (!user) {
     res.status(401).json({ error: "Invalid login credentials" });
     return;
   }
-  const session = createSession(user.id);
+  const session = await createSession(user.id);
 
   res.json({
     data: {
@@ -249,24 +314,28 @@ app.post("/login", (req, res) => {
       redirectTo: getRedirectForRole(user.role)
     }
   });
-});
+  });
 
-app.get("/session/:sessionId", (req, res) => {
-  const session = sessions.get(req.params.sessionId);
+  app.get("/session/:sessionId", async (req, res) => {
+  await dbReady;
+  const session = hasAuthDb() ? await getSessionDb(req.params.sessionId) : sessions.get(req.params.sessionId);
 
   if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
     if (session) {
-      sessions.delete(session.id);
+      if (hasAuthDb()) await deleteSessionDb(session.id);
+      else sessions.delete(session.id);
     }
 
     res.status(401).json({ error: "Session expired or not found" });
     return;
   }
 
-  const user = users.find((item) => item.id === session.userId);
+  const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
+  const user = sourceUsers.find((item) => item.id === session.userId);
 
   if (!user) {
-    sessions.delete(session.id);
+    if (hasAuthDb()) await deleteSessionDb(session.id);
+    else sessions.delete(session.id);
     res.status(401).json({ error: "Session user not found" });
     return;
   }
@@ -278,24 +347,29 @@ app.get("/session/:sessionId", (req, res) => {
       redirectTo: getRedirectForRole(user.role)
     }
   });
-});
+  });
 
-app.post("/logout", (req, res) => {
+  app.post("/logout", async (req, res) => {
+  await dbReady;
   const sessionId = String(req.body.sessionId ?? "");
 
   if (sessionId) {
-    sessions.delete(sessionId);
+    if (hasAuthDb()) await deleteSessionDb(sessionId);
+    else sessions.delete(sessionId);
   }
 
   res.json({ data: { ok: true } });
-});
+  });
+
+  return app;
+}
 
 function getRedirectForRole(role: UserRole) {
   if (role === "platform_owner") {
     return "/admin";
   }
 
-  if (role === "restaurant_owner") {
+  if (role === "restaurant_owner" || isRestaurantRole(role)) {
     return "/restaurant";
   }
 
@@ -314,7 +388,15 @@ function getRedirectForRole(role: UserRole) {
   return "/";
 }
 
-function findUserByIdentifier(identifier: string) {
+function isRestaurantRole(role: UserRole | string): role is RestaurantRole {
+  return restaurantRoles.includes(role as RestaurantRole);
+}
+
+async function findUserByIdentifier(identifier: string) {
+  if (hasAuthDb()) {
+    return findUserDb({ email: identifier, phone: identifier, username: identifier });
+  }
+
   return users.find((item) => {
     return (
       item.email.toLowerCase() === identifier ||
@@ -324,21 +406,26 @@ function findUserByIdentifier(identifier: string) {
   });
 }
 
-function createSession(userId: string) {
+async function createSession(userId: string) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 8);
-  const session: DemoSession = {
+  const session: AuthSessionRecord = {
     id: `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     userId,
     createdAt: now.toISOString(),
     expiresAt: expiresAt.toISOString()
   };
 
-  sessions.set(session.id, session);
+  if (hasAuthDb()) await createSessionDb(session);
+  else sessions.set(session.id, session);
   return session;
 }
 
-function isIdentityTaken(identity: { email: string; phone?: string; username: string }) {
+async function isIdentityTaken(identity: { email: string; phone?: string; username: string }) {
+  if (hasAuthDb()) {
+    return Boolean(await findUserDb(identity));
+  }
+
   return users.some((item) => {
     return (
       item.email.toLowerCase() === identity.email.toLowerCase() ||
@@ -357,6 +444,10 @@ function uniqueUsername(value: string) {
     .slice(0, 40);
 }
 
-app.listen(port, () => {
-  console.log(`Auth service listening on http://localhost:${port}`);
-});
+const app = createApp();
+
+if (!process.env.SCANMENU_SKIP_LISTEN) {
+  app.listen(port, () => {
+    console.log(`Auth service listening on http://localhost:${port}`);
+  });
+}
