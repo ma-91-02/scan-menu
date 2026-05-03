@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
-import type { MenuItem, Restaurant } from "@menuza/shared";
-import { pickLocalizedText } from "@menuza/shared";
+import type { MenuItem, Restaurant } from "@scanmenu/shared";
+import { pickLocalizedText } from "@scanmenu/shared";
 
 const restaurants: Restaurant[] = [
   {

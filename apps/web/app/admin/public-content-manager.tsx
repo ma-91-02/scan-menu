@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { PublicPageContent } from "@scan-menu/shared";
+import type { PublicPageContent } from "@scanmenu/shared";
 import { apiUrl } from "../../lib/api";
 
 interface PublicContentManagerProps {

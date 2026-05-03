@@ -12,6 +12,6 @@ export const colors = {
 } as const;
 
 export const storageKeys = {
-  onboardingDone: "scan-menu-mobile-onboarding-done",
-  language: "scan-menu-mobile-language"
+  onboardingDone: "scanmenu-mobile-onboarding-done",
+  language: "scanmenu-mobile-language"
 } as const;

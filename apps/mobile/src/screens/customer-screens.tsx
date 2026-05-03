@@ -67,9 +67,9 @@ export function AuthScreen(props: {
           </View>
           <Text style={styles.consentText}>
             {props.t.termsConsent.split(props.t.terms)[0]}
-            <Text style={styles.consentLink} onPress={() => void Linking.openURL("https://scan-menu.local/terms")}>{props.t.terms}</Text>
+            <Text style={styles.consentLink} onPress={() => void Linking.openURL("https://scanmenu.local/terms")}>{props.t.terms}</Text>
             {props.t.termsConsent.split(props.t.terms)[1]?.split(props.t.privacy)[0] ?? " and "}
-            <Text style={styles.consentLink} onPress={() => void Linking.openURL("https://scan-menu.local/privacy")}>{props.t.privacy}</Text>
+            <Text style={styles.consentLink} onPress={() => void Linking.openURL("https://scanmenu.local/privacy")}>{props.t.privacy}</Text>
           </Text>
         </Pressable>
       ) : null}

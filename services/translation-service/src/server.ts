@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
-import type { LanguageCode, LocalizedPublicPageContent, PublicPageContent } from "@menuza/shared";
-import { pickLocalizedText, supportedLanguages } from "@menuza/shared";
+import type { LanguageCode, LocalizedPublicPageContent, PublicPageContent } from "@scanmenu/shared";
+import { pickLocalizedText, supportedLanguages } from "@scanmenu/shared";
 
 const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
   "no onions": {
@@ -23,9 +23,9 @@ const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
 let publicPageContent: PublicPageContent = {
   id: "public-home",
   brandName: {
-    ar: "Menuza",
-    en: "Menuza",
-    ru: "Menuza"
+    ar: "Scan Menu",
+    en: "Scan Menu",
+    ru: "Scan Menu"
   },
   nav: {
     home: {
@@ -101,9 +101,9 @@ let publicPageContent: PublicPageContent = {
       ru: "Гость заказывает на своем языке, ресторан получает заказ на своем."
     },
     subtitle: {
-      ar: "Menuza تربط العملاء والمطاعم عبر ترجمة مركزية، إدارة قوائم، طلبات مباشرة، وصلاحيات للموظفين والمحاسبين وأصحاب المطاعم.",
-      en: "Menuza connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
-      ru: "Menuza объединяет гостей и рестораны: переводы, меню, заказы и роли для сотрудников, бухгалтеров и владельцев."
+      ar: "Scan Menu تربط العملاء والمطاعم عبر ترجمة مركزية، إدارة قوائم، طلبات مباشرة، وصلاحيات للموظفين والمحاسبين وأصحاب المطاعم.",
+      en: "Scan Menu connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
+      ru: "Scan Menu объединяет гостей и рестораны: переводы, меню, заказы и роли для сотрудников, бухгалтеров и владельцев."
     },
     primaryAction: { ar: "ابدأ لمطعمك", en: "Start your restaurant", ru: "Начать для ресторана" },
     secondaryAction: { ar: "شاهد المزايا", en: "Explore features", ru: "Посмотреть функции" },
@@ -188,9 +188,9 @@ let publicPageContent: PublicPageContent = {
   ],
   about: {
     title: {
-      ar: "Menuza ليست صفحة تعريف فقط، بل نظام تشغيل للمطاعم.",
-      en: "Menuza is not only a website. It is an operating system for restaurants.",
-      ru: "Menuza - не просто сайт, а операционная система для ресторанов."
+      ar: "Scan Menu ليست صفحة تعريف فقط، بل نظام تشغيل للمطاعم.",
+      en: "Scan Menu is not only a website. It is an operating system for restaurants.",
+      ru: "Scan Menu - не просто сайт, а операционная система для ресторанов."
     },
     body: {
       ar: "يمكن لمالك المنصة التحكم بمحتوى الصفحة العامة، اللغات، الأسعار، وواجهات المطاعم من لوحة التحكم.",
@@ -312,7 +312,7 @@ app.post("/translate", (req, res) => {
       sourceLanguage: req.body.sourceLanguage ?? "auto",
       targetLanguage,
       translatedText,
-      provider: phrasebook[text] ? "menuza-phrasebook" : "placeholder"
+      provider: phrasebook[text] ? "scanmenu-phrasebook" : "placeholder"
     }
   });
 });

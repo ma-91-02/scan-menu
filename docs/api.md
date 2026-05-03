@@ -1,4 +1,4 @@
-# Menuza MVP API
+# Scan Menu MVP API
 
 All client traffic should go through the API gateway at `http://localhost:4000`.
 

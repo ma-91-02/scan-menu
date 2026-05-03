@@ -1,5 +1,5 @@
-import type { ApiResponse, LocalizedPublicPageContent, MenuItem, Order, PublicPageContent } from "@scan-menu/shared";
-import { supportedLanguages } from "@scan-menu/shared";
+import type { ApiResponse, LocalizedPublicPageContent, MenuItem, Order, PublicPageContent } from "@scanmenu/shared";
+import { supportedLanguages } from "@scanmenu/shared";
 
 export const apiUrl = process.env.WEB_PUBLIC_API_URL ?? "http://localhost:4001";
 

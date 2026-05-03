@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
-import type { LanguageCode, MenuItem, Order, OrderLine, Restaurant } from "@menuza/shared";
-import { pickLocalizedText } from "@menuza/shared";
+import type { LanguageCode, MenuItem, Order, OrderLine, Restaurant } from "@scanmenu/shared";
+import { pickLocalizedText } from "@scanmenu/shared";
 
 const restaurants: Pick<Restaurant, "id" | "operatingLanguage">[] = [
   { id: "rst_bistro_01", operatingLanguage: "ru" },
@@ -108,9 +108,11 @@ app.get("/health", (_req, res) => {
 
 app.get("/", (req, res) => {
   const restaurantId = req.query.restaurantId ? String(req.query.restaurantId) : undefined;
+  const customerId = req.query.customerId ? String(req.query.customerId) : undefined;
   const language = req.query.language ? String(req.query.language) : undefined;
   const data = orders
     .filter((order) => !restaurantId || order.restaurantId === restaurantId)
+    .filter((order) => !customerId || order.customerId === customerId)
     .map((order) => localizeOrder(order, language ?? order.restaurantLanguage));
 
   res.json({ data });
@@ -167,11 +169,12 @@ function translateLine(
 ): OrderLine {
   const menuItem = menuCatalog.find((item) => item.id === line.menuItemId && item.restaurantId === restaurantId);
   const noteKey = String(line.customerNote ?? "").trim().toLowerCase();
+  const isWaiterRequest = line.menuItemId === "waiter_request";
 
   return {
     ...line,
-    customerItemName: menuItem ? pickLocalizedText(menuItem.name, customerLanguage) : line.customerItemName,
-    restaurantItemName: menuItem ? pickLocalizedText(menuItem.name, restaurantLanguage) : line.restaurantItemName,
+    customerItemName: isWaiterRequest ? "Waiter request" : menuItem ? pickLocalizedText(menuItem.name, customerLanguage) : line.customerItemName,
+    restaurantItemName: isWaiterRequest ? "Waiter request" : menuItem ? pickLocalizedText(menuItem.name, restaurantLanguage) : line.restaurantItemName,
     restaurantNote: noteTranslations[noteKey]?.[restaurantLanguage] ?? line.restaurantNote ?? line.customerNote
   };
 }

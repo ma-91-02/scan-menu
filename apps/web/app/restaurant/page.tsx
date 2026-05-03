@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supportedLanguages } from "@scan-menu/shared";
+import { supportedLanguages } from "@scanmenu/shared";
 import { SessionBar } from "../session-actions";
 
 type TabId = "menu" | "cashier" | "kitchen";

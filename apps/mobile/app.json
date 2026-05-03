@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Scan Menu",
-    "slug": "scan-menu",
+    "slug": "scanmenu",
     "scheme": "scanmenu",
     "version": "0.1.0",
     "orientation": "portrait",

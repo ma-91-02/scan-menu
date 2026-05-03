@@ -13,35 +13,35 @@ services:
 
   auth-service:
     build: .
-    command: npm run start -w @menuza/auth-service
+    command: npm run start -w @scanmenu/auth-service
     environment:
       NODE_ENV: production
       AUTH_SERVICE_PORT: 4101
 
   restaurant-service:
     build: .
-    command: npm run start -w @menuza/restaurant-service
+    command: npm run start -w @scanmenu/restaurant-service
     environment:
       NODE_ENV: production
       RESTAURANT_SERVICE_PORT: 4102
 
   order-service:
     build: .
-    command: npm run start -w @menuza/order-service
+    command: npm run start -w @scanmenu/order-service
     environment:
       NODE_ENV: production
       ORDER_SERVICE_PORT: 4103
 
   translation-service:
     build: .
-    command: npm run start -w @menuza/translation-service
+    command: npm run start -w @scanmenu/translation-service
     environment:
       NODE_ENV: production
       TRANSLATION_SERVICE_PORT: 4104
 
   api-gateway:
     build: .
-    command: npm run start -w @menuza/api-gateway
+    command: npm run start -w @scanmenu/api-gateway
     environment:
       NODE_ENV: production
       API_GATEWAY_PORT: 4000
@@ -63,7 +63,7 @@ services:
 
   web:
     build: .
-    command: npm run start -w @menuza/web
+    command: npm run start -w @scanmenu/web
     environment:
       NODE_ENV: production
       WEB_PUBLIC_API_URL: http://api-gateway:4000

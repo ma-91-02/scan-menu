@@ -1,6 +1,6 @@
 import cors from "cors";
 import express from "express";
-import type { UserRole } from "@menuza/shared";
+import type { UserRole } from "@scanmenu/shared";
 
 interface DemoUser {
   id: string;
@@ -26,8 +26,8 @@ const users: DemoUser[] = [
   {
     id: "usr_platform_owner",
     name: "Mohamed",
-    username: "menuza-admin",
-    email: "owner@menuza.local",
+    username: "scanmenu-admin",
+    email: "owner@scanmenu.local",
     role: "platform_owner",
     preferredLanguage: "ar"
   },
@@ -67,7 +67,7 @@ const users: DemoUser[] = [
     id: "usr_customer",
     name: "Omar Ali",
     username: "omar-customer",
-    email: "customer@menuza.local",
+    email: "customer@scanmenu.local",
     role: "customer",
     preferredLanguage: "ar"
   },
@@ -75,7 +75,7 @@ const users: DemoUser[] = [
     id: "usr_delivery_partner",
     name: "Delivery Partner",
     username: "delivery-partner",
-    email: "driver@menuza.local",
+    email: "driver@scanmenu.local",
     role: "delivery_partner",
     preferredLanguage: "ar",
     permissions: ["delivery:read", "delivery:update"]
@@ -84,7 +84,7 @@ const users: DemoUser[] = [
     id: "usr_farmer_partner",
     name: "Farm Partner",
     username: "farm-partner",
-    email: "farmer@menuza.local",
+    email: "farmer@scanmenu.local",
     role: "farmer_partner",
     preferredLanguage: "ar",
     permissions: ["supply:read", "supply:write"]
@@ -93,7 +93,7 @@ const users: DemoUser[] = [
     id: "usr_supplier_partner",
     name: "Grocery Supplier",
     username: "supplier-partner",
-    email: "supplier@menuza.local",
+    email: "supplier@scanmenu.local",
     role: "supplier_partner",
     preferredLanguage: "ar",
     permissions: ["supply:read", "inventory:write"]
@@ -120,6 +120,13 @@ app.post("/register/customer", (req, res) => {
   const email = String(req.body.email ?? "customer@example.com").trim().toLowerCase();
   const username = uniqueUsername(String(req.body.username ?? email.split("@")[0] ?? "customer"));
   const phone = String(req.body.phone ?? "").trim();
+  const termsAccepted = Boolean(req.body.termsAccepted);
+  const privacyAccepted = Boolean(req.body.privacyAccepted);
+
+  if (!termsAccepted || !privacyAccepted) {
+    res.status(400).json({ error: "Terms of Use and Privacy Policy consent is required" });
+    return;
+  }
 
   if (isIdentityTaken({ email, phone, username })) {
     res.status(409).json({ error: "Email, phone, or username is already registered" });
@@ -172,7 +179,7 @@ app.post("/register/restaurant", (req, res) => {
   const lastName = String(req.body.lastName ?? "").trim();
   const restaurantName = String(req.body.restaurantName ?? "").trim();
   const phone = String(req.body.phone ?? "").trim();
-  const email = String(req.body.email ?? `${phone || "restaurant"}@menuza.local`).trim().toLowerCase();
+  const email = String(req.body.email ?? `${phone || "restaurant"}@scanmenu.local`).trim().toLowerCase();
   const requestedUsername = String(req.body.username ?? "").trim();
   const username = uniqueUsername(requestedUsername || restaurantName || email.split("@")[0] || "restaurant");
   const password = String(req.body.password ?? "");

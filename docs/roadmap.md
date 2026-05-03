@@ -1,4 +1,4 @@
-# Menuza Roadmap
+# Scan Menu Roadmap
 
 ## Phase 1: Runnable MVP
 

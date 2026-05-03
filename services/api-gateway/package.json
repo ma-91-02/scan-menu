@@ -1,5 +1,5 @@
 {
-  "name": "@menuza/api-gateway",
+  "name": "@scanmenu/api-gateway",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@menuza/shared": "*",
+    "@scanmenu/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "http-proxy-middleware": "^3.0.3"

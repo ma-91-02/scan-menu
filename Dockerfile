@@ -11,12 +11,12 @@ COPY tsconfig.base.json ./
 RUN npm install
 
 # 🔥 هذا هو الحل المهم
-RUN npm run build -w @menuza/shared
-RUN npm run build -w @menuza/auth-service
-RUN npm run build -w @menuza/restaurant-service
-RUN npm run build -w @menuza/order-service
-RUN npm run build -w @menuza/translation-service
-RUN npm run build -w @menuza/api-gateway
-RUN npm run build -w @menuza/web
+RUN npm run build -w @scanmenu/shared
+RUN npm run build -w @scanmenu/auth-service
+RUN npm run build -w @scanmenu/restaurant-service
+RUN npm run build -w @scanmenu/order-service
+RUN npm run build -w @scanmenu/translation-service
+RUN npm run build -w @scanmenu/api-gateway
+RUN npm run build -w @scanmenu/web
 
-CMD ["npm", "run", "start", "-w", "@menuza/api-gateway"]
+CMD ["npm", "run", "start", "-w", "@scanmenu/api-gateway"]

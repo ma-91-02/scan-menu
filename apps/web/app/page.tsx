@@ -1,4 +1,4 @@
-import { supportedLanguages } from "@scan-menu/shared";
+import { supportedLanguages } from "@scanmenu/shared";
 import { getPublicPage } from "../lib/api";
 import { LanguageBootstrap, LanguageSelect, LoginForm, RegistrationForm } from "./public-actions";
 

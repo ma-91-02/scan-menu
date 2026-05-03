@@ -44,5 +44,5 @@ app.use(
 );
 
 app.listen(port, () => {
-  console.log(`Menuza API Gateway listening on http://localhost:${port}`);
+  console.log(`Scan Menu API Gateway listening on http://localhost:${port}`);
 });

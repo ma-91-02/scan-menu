@@ -1,8 +1,8 @@
-# Menuza Architecture
+# Scan Menu Architecture
 
 ## System Shape
 
-Menuza uses a TypeScript monorepo with independent apps and services. Each service owns a bounded business capability and exposes HTTP APIs for the MVP. Event-driven messaging can be introduced later for order state changes, translation jobs, notifications, and analytics.
+Scan Menu uses a TypeScript monorepo with independent apps and services. Each service owns a bounded business capability and exposes HTTP APIs for the MVP. Event-driven messaging can be introduced later for order state changes, translation jobs, notifications, and analytics.
 
 ```mermaid
 flowchart LR

@@ -1,5 +1,5 @@
 {
-  "name": "@menuza/translation-service",
+  "name": "@scanmenu/translation-service",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@menuza/shared": "*",
+    "@scanmenu/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2"
   },

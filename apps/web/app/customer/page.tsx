@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supportedLanguages } from "@scan-menu/shared";
+import { supportedLanguages } from "@scanmenu/shared";
 
 type ViewId = "menu" | "waiter" | "discounts" | "settings";
 type AuthMode = "login" | "register";
@@ -42,9 +42,9 @@ interface CustomerOrder {
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
-const languageStorageKey = "scan-menu-customer-language";
-const customerStorageKey = "scan-menu-customer-user";
-const sessionStorageKey = "scan-menu-session";
+const languageStorageKey = "scanmenu-customer-language";
+const customerStorageKey = "scanmenu-customer-user";
+const sessionStorageKey = "scanmenu-session";
 
 const fallbackRestaurants: Restaurant[] = [
   {

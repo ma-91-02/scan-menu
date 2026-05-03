@@ -1,6 +1,6 @@
-# Menuza
+# Scan Menu
 
-Menuza is a multilingual restaurant ordering platform. Customers order from the mobile app in their own language, while restaurants receive menu items, notes, and order updates in the restaurant's operating language.
+Scan Menu is a multilingual restaurant ordering platform. Customers order from the mobile app in their own language, while restaurants receive menu items, notes, and order updates in the restaurant's operating language.
 
 ## Product Surfaces
 
@@ -15,10 +15,10 @@ Menuza is a multilingual restaurant ordering platform. Customers order from the 
 
 ## Core Idea
 
-Menuza separates user language from restaurant language:
+Scan Menu separates user language from restaurant language:
 
 1. A customer sees menus and submits notes in their preferred language.
-2. Menuza stores canonical menu and order data with localized fields.
+2. Scan Menu stores canonical menu and order data with localized fields.
 3. The translation service converts customer-facing text into restaurant-facing language.
 4. Restaurant staff receive the order in their configured language.
 

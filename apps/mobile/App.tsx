@@ -55,7 +55,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [returnAfterAuth, setReturnAfterAuth] = useState<Screen>("scan");
   const [name, setName] = useState("Amelia Evans");
-  const [identifier, setIdentifier] = useState("customer@scan-menu.local");
+  const [identifier, setIdentifier] = useState("customer@scanmenu.local");
   const [password, setPassword] = useState("password");
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
