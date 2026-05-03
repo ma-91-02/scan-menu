@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
-const sessionStorageKey = "menuza-session";
+const sessionStorageKey = "scan-menu-session";
 
 interface SessionUser {
   name: string;

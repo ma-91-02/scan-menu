@@ -1,5 +1,5 @@
-import type { ApiResponse, LocalizedPublicPageContent, MenuItem, Order, PublicPageContent } from "@menuza/shared";
-import { supportedLanguages } from "@menuza/shared";
+import type { ApiResponse, LocalizedPublicPageContent, MenuItem, Order, PublicPageContent } from "@scan-menu/shared";
+import { supportedLanguages } from "@scan-menu/shared";
 
 export const apiUrl = process.env.WEB_PUBLIC_API_URL ?? "http://localhost:4001";
 
@@ -45,7 +45,7 @@ const fallbackMenu: Array<MenuItem & { displayName: string; displayDescription: 
 
 const fallbackPublicPage: LocalizedPublicPageContent = {
   id: "public-home",
-  brandName: "Menuza",
+  brandName: "Scan Menu",
   nav: {
     home: "Home",
     pricing: "Pricing",
@@ -58,7 +58,7 @@ const fallbackPublicPage: LocalizedPublicPageContent = {
     eyebrow: "Multilingual restaurant platform",
     title: "Let every guest order in their language, while your restaurant receives it in yours.",
     subtitle:
-      "Menuza connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
+      "Scan Menu connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
     primaryAction: "Start your restaurant",
     secondaryAction: "Explore features",
     imageUrl:
@@ -67,7 +67,7 @@ const fallbackPublicPage: LocalizedPublicPageContent = {
   featureCards: [],
   pricing: [],
   about: {
-    title: "Menuza is an operating system for restaurants.",
+    title: "Scan Menu is an operating system for restaurants.",
     body: "The platform owner controls public content, languages, pricing, and restaurant-facing areas from the dashboard."
   },
   restaurantPortal: {
@@ -81,7 +81,7 @@ const fallbackPublicPage: LocalizedPublicPageContent = {
 
 const fallbackRawPublicPage: PublicPageContent = {
   id: "public-home",
-  brandName: { ar: "Menuza", en: "Menuza", ru: "Menuza" },
+  brandName: { ar: "Scan Menu", en: "Scan Menu", ru: "Scan Menu" },
   nav: {
     home: { ar: "الرئيسية", en: "Home", ru: "Главная" },
     pricing: { ar: "الأسعار", en: "Pricing", ru: "Цена" },

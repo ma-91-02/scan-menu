@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Menuza Dashboard",
+  title: "Scan Menu Dashboard",
   description: "Multilingual restaurant operations dashboard"
 };
 

@@ -1,4 +1,4 @@
-import { supportedLanguages } from "@menuza/shared";
+import { supportedLanguages } from "@scan-menu/shared";
 import { getPublicPage } from "../lib/api";
 import { LanguageBootstrap, LanguageSelect, LoginForm, RegistrationForm } from "./public-actions";
 
@@ -62,7 +62,7 @@ export default async function PublicHomePage({ searchParams }: PublicHomePagePro
 
       <section className="public-band" id="features">
         <div className="section-heading">
-          <span>Menuza</span>
+          <span>Scan Menu</span>
           <h2>{content.about.title}</h2>
           <p>{content.about.body}</p>
         </div>
@@ -83,7 +83,7 @@ export default async function PublicHomePage({ searchParams }: PublicHomePagePro
       <section className="pricing-section" id="pricing">
         <div className="section-heading">
           <span>{content.nav.pricing}</span>
-          <h2>Menuza plans</h2>
+          <h2>Scan Menu plans</h2>
         </div>
 
         <div className="pricing-grid">
@@ -160,7 +160,7 @@ export default async function PublicHomePage({ searchParams }: PublicHomePagePro
 function partnerCopy(language: string) {
   if (language === "ar") {
     return {
-      eyebrow: "شبكة شركاء Menuza",
+      eyebrow: "شبكة شركاء Scan Menu",
       title: "مسارات دخول واضحة لكل من يخدم المطاعم",
       body:
         "يمكن لسائقي التوصيل، المزارعين، وأصحاب البقالة أو الموردين الدخول بحساباتهم الخاصة ومتابعة الطلبات والعروض والتوريد حسب صلاحياتهم.",
@@ -188,7 +188,7 @@ function partnerCopy(language: string) {
   }
 
   return {
-    eyebrow: "Menuza partner network",
+    eyebrow: "Scan Menu partner network",
     title: "Dedicated access for everyone who serves restaurants",
     body:
       "Delivery drivers, farmers, grocery owners, and suppliers can sign in to role-based workspaces for deliveries, supply, and restaurant procurement.",

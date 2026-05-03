@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supportedLanguages } from "@menuza/shared";
+import { supportedLanguages } from "@scan-menu/shared";
 
 type ViewId = "menu" | "waiter" | "discounts" | "settings";
 type AuthMode = "login" | "register";
@@ -42,9 +42,9 @@ interface CustomerOrder {
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
-const languageStorageKey = "menuza-customer-language";
-const customerStorageKey = "menuza-customer-user";
-const sessionStorageKey = "menuza-session";
+const languageStorageKey = "scan-menu-customer-language";
+const customerStorageKey = "scan-menu-customer-user";
+const sessionStorageKey = "scan-menu-session";
 
 const fallbackRestaurants: Restaurant[] = [
   {
@@ -400,7 +400,7 @@ export default function CustomerPage() {
     return (
       <main className="customer-app-shell">
         <section className="customer-phone language-onboarding">
-          <span>Menuza</span>
+          <span>Scan Menu</span>
           <h1>{translations.ar.chooseLanguage}</h1>
           <p>{translations.ar.languageHint}</p>
           <div className="language-choice-grid">
@@ -420,7 +420,7 @@ export default function CustomerPage() {
       <section className="customer-phone">
         <header className="customer-mobile-top">
           <div>
-            <span>Menuza</span>
+            <span>Scan Menu</span>
             <strong>{selectedRestaurant.name}</strong>
           </div>
           <button type="button" onClick={() => setActiveView("settings")}>

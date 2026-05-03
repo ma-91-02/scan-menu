@@ -31,8 +31,8 @@ interface RegistrationFormProps {
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
-const languageStorageKey = "menuza-language";
-const sessionStorageKey = "menuza-session";
+const languageStorageKey = "scan-menu-language";
+const sessionStorageKey = "scan-menu-session";
 
 export function LanguageBootstrap({ fallbackLanguage, languages }: LanguageBootstrapProps) {
   const router = useRouter();

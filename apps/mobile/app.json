@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Menuza",
-    "slug": "menuza",
-    "scheme": "menuza",
+    "name": "Scan Menu",
+    "slug": "scan-menu",
+    "scheme": "scanmenu",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

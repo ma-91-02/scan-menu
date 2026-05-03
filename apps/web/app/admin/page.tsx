@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <strong>Menuza</strong>
+          <strong>Scan Menu</strong>
           <span>لوحة تحكم المنصة</span>
         </div>
 
@@ -45,7 +45,7 @@ export default async function AdminDashboardPage() {
       <section className="main">
         <header className="topbar">
           <div>
-            <h1>لوحة تحكم Menuza</h1>
+            <h1>لوحة تحكم Scan Menu</h1>
             <p className="muted">إدارة المطاعم، الطلبات، المستخدمين، ومحتوى الواجهة العامة.</p>
             <p className="muted">API: {apiUrl}</p>
           </div>

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@menuza/shared"]
+  transpilePackages: ["@scan-menu/shared"]
 };
 
 export default nextConfig;

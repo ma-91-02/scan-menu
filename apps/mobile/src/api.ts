@@ -17,29 +17,59 @@ export interface MenuItem {
   restaurantId: string;
   name: Record<string, string>;
   description: Record<string, string>;
+  displayName: string;
+  displayDescription: string;
   price: number;
   currency: "USD" | "EUR" | "RUB" | "SAR" | "AED";
   isAvailable: boolean;
+  categoryId?: string;
+  ingredientIds?: string[];
 }
 
-export interface Order {
+export interface OrderLine {
+  menuItemId: string;
+  quantity: number;
+  customerNote?: string;
+  restaurantNote?: string;
+  customerItemName?: string;
+  restaurantItemName?: string;
+  displayName?: string;
+  displayNote?: string;
+}
+
+export interface CustomerOrder {
   id: string;
   restaurantId: string;
   customerId: string;
   customerLanguage: string;
   restaurantLanguage: string;
   status: string;
-  lines: Array<{
-    menuItemId: string;
-    quantity: number;
-    customerNote?: string;
-    restaurantNote?: string;
-    customerItemName?: string;
-    restaurantItemName?: string;
-  }>;
+  lines: OrderLine[];
+  displayLines?: OrderLine[];
   total: number;
   currency: MenuItem["currency"];
   createdAt: string;
+}
+
+export interface CustomerUser {
+  id: string;
+  name: string;
+  email?: string;
+  role?: string;
+  preferredLanguage?: string;
+}
+
+export interface CustomerSession {
+  id: string;
+  userId: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface AuthResult {
+  user: CustomerUser;
+  session?: CustomerSession;
+  accessToken?: string;
 }
 
 export const supportedLanguages: Array<{
@@ -54,26 +84,6 @@ export const supportedLanguages: Array<{
   { code: "fr", nativeName: "Français", direction: "ltr" },
   { code: "es", nativeName: "Español", direction: "ltr" }
 ];
-
-export type CustomerMenuItem = MenuItem & {
-  displayName: string;
-  displayDescription: string;
-};
-
-export type CustomerOrder = Order & {
-  displayLines?: Array<Order["lines"][number] & { displayName?: string; displayNote?: string }>;
-};
-
-export interface CustomerUser {
-  id: string;
-  name: string;
-  email?: string;
-  preferredLanguage?: string;
-}
-
-const localApiUrl = Platform.OS === "android" ? "http://10.0.2.2:4001" : "http://localhost:4001";
-
-export const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? localApiUrl;
 
 export const fallbackRestaurants: Restaurant[] = [
   {
@@ -99,7 +109,7 @@ export const fallbackRestaurants: Restaurant[] = [
   }
 ];
 
-export const fallbackMenu: CustomerMenuItem[] = [
+export const fallbackMenu: MenuItem[] = [
   {
     id: "mi_salmon_bowl",
     restaurantId: "rst_bistro_01",
@@ -110,24 +120,70 @@ export const fallbackMenu: CustomerMenuItem[] = [
       ru: "Рис, лосось, авокадо, огурец, кунжут.",
       tr: "Pirinç, somon, avokado, salatalık, susam."
     },
-    displayName: "وعاء السلمون",
-    displayDescription: "أرز، سلمون، أفوكادو، خيار، سمسم.",
+    displayName: "Salmon Bowl",
+    displayDescription: "Rice, salmon, avocado, cucumber, sesame.",
     price: 18,
     currency: "USD",
     isAvailable: true
   }
 ];
 
+const localCandidates = Platform.OS === "android"
+  ? ["http://10.0.2.2:4001", "http://10.0.2.2:4000"]
+  : ["http://localhost:4001", "http://127.0.0.1:4001", "http://localhost:4000"];
+
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL;
+const apiCandidates = configuredApiUrl ? [configuredApiUrl, ...localCandidates] : localCandidates;
+const requestTimeoutMs = 1200;
+let activeApiUrl = apiCandidates[0]!;
+
+export function getApiUrl() {
+  return activeApiUrl;
+}
+
+async function requestData<T>(path: string, options?: RequestInit): Promise<T> {
+  let lastError: unknown;
+
+  for (const candidate of getPrioritizedApiCandidates()) {
+    try {
+      const response = await fetchWithTimeout(`${candidate}${path}`, options);
+      const payload = (await response.json().catch(() => ({}))) as ApiResponse<T> & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Request failed: ${response.status}`);
+      }
+
+      activeApiUrl = candidate;
+      return payload.data;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("API is unavailable");
+}
+
+function getPrioritizedApiCandidates() {
+  return [activeApiUrl, ...apiCandidates.filter((candidate) => candidate !== activeApiUrl)];
+}
+
+async function fetchWithTimeout(url: string, options?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchData<T>(path: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(`${apiUrl}${path}`);
-
-    if (!response.ok) {
-      return fallback;
-    }
-
-    const payload = (await response.json()) as ApiResponse<T>;
-    return payload.data;
+    return await requestData<T>(path);
   } catch {
     return fallback;
   }
@@ -141,8 +197,19 @@ export async function getRestaurants() {
   return fetchData("/restaurants", fallbackRestaurants);
 }
 
+export async function getRestaurant(restaurantId: string) {
+  return fetchData(`/restaurants/${restaurantId}`, fallbackRestaurants.find((item) => item.id === restaurantId) ?? fallbackRestaurants[0]!);
+}
+
 export async function getMenu(restaurantId: string, language: string) {
-  return fetchData(`/restaurants/${restaurantId}/menu?language=${language}`, fallbackMenu);
+  return fetchData(`/restaurants/${restaurantId}/menu?language=${encodeURIComponent(language)}`, fallbackMenu);
+}
+
+export async function getCustomerOrders(customerId: string, language: string) {
+  return fetchData<CustomerOrder[]>(
+    `/orders?customerId=${encodeURIComponent(customerId)}&language=${encodeURIComponent(language)}`,
+    []
+  );
 }
 
 export async function createOrder(input: {
@@ -152,16 +219,18 @@ export async function createOrder(input: {
   restaurantLanguage: string;
   cart: Record<string, number>;
   note?: string;
+  tableNumber?: string;
 }) {
+  const note = [input.note, input.tableNumber ? `table ${input.tableNumber}` : ""].filter(Boolean).join("; ");
   const lines = Object.entries(input.cart)
     .filter(([, quantity]) => quantity > 0)
     .map(([menuItemId, quantity]) => ({
       menuItemId,
       quantity,
-      customerNote: input.note
+      customerNote: note || undefined
     }));
 
-  const response = await fetch(`${apiUrl}/orders`, {
+  return requestData<CustomerOrder>("/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -172,49 +241,79 @@ export async function createOrder(input: {
       lines
     })
   });
+}
 
-  const payload = (await response.json()) as ApiResponse<CustomerOrder>;
-
-  if (!response.ok) {
-    throw new Error("Order failed");
-  }
-
-  return payload.data;
+export async function requestWaiter(input: {
+  restaurantId: string;
+  customerId: string;
+  customerLanguage: string;
+  restaurantLanguage: string;
+  tableNumber?: string;
+}) {
+  return requestData<CustomerOrder>("/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      restaurantId: input.restaurantId,
+      customerId: input.customerId,
+      customerLanguage: input.customerLanguage,
+      restaurantLanguage: input.restaurantLanguage,
+      lines: [
+        {
+          menuItemId: "waiter_request",
+          quantity: 1,
+          customerNote: input.tableNumber ? `waiter; table ${input.tableNumber}` : "waiter"
+        }
+      ]
+    })
+  });
 }
 
 export async function registerCustomer(input: {
   name: string;
   email: string;
   username: string;
+  password?: string;
   preferredLanguage: string;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  consentAt: string;
 }) {
-  const response = await fetch(`${apiUrl}/auth/register/customer`, {
+  const data = await requestData<AuthResult>("/auth/register/customer", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)
   });
 
-  const payload = (await response.json()) as ApiResponse<{ user: CustomerUser }>;
-
-  if (!response.ok) {
-    throw new Error("Registration failed");
+  if (data.user.role && data.user.role !== "customer") {
+    throw new Error("This account is not a customer account");
   }
 
-  return payload.data.user;
+  return data;
 }
 
 export async function loginCustomer(input: { identifier: string; password: string }) {
-  const response = await fetch(`${apiUrl}/auth/login`, {
+  const data = await requestData<AuthResult>("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)
   });
 
-  const payload = (await response.json()) as ApiResponse<{ user: CustomerUser & { role: string } }>;
-
-  if (!response.ok || payload.data.user.role !== "customer") {
-    throw new Error("Login failed");
+  if (data.user.role !== "customer") {
+    throw new Error("This account is not a customer account");
   }
 
-  return payload.data.user;
+  return data;
+}
+
+export async function logoutCustomer(sessionId?: string) {
+  if (!sessionId) {
+    return { ok: true };
+  }
+
+  return requestData<{ ok: boolean }>("/auth/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId })
+  });
 }

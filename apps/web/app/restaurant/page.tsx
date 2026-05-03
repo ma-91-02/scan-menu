@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supportedLanguages } from "@menuza/shared";
+import { supportedLanguages } from "@scan-menu/shared";
 import { SessionBar } from "../session-actions";
 
 type TabId = "menu" | "cashier" | "kitchen";
@@ -284,7 +284,7 @@ export default function RestaurantDashboardPage() {
   return (
     <main className="restaurant-console" dir={["ar", "ur", "fa", "he"].includes(ownerLanguage) ? "rtl" : "ltr"}>
       <aside className="restaurant-sidebar compact-owner-sidebar">
-        <strong>Menuza OS</strong>
+        <strong>Scan Menu OS</strong>
         {tabs.map((tab) => (
           <button
             className={activeTab === tab.id ? "active" : ""}
