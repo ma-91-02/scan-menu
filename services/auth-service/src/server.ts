@@ -17,6 +17,7 @@ import {
   getUsersDb,
   hasAuthDb,
   initAuthDatabase,
+  markAuthDbUnavailable,
   updateUserDb,
   type AuthSessionRecord,
   type AuthUserRecord,
@@ -61,6 +62,7 @@ const sessions = new Map<string, AuthSessionRecord>();
 const dbReady = prepareSeedData()
   .then((seed) => initAuthDatabase(seed.users, seed.restaurants, seed.staff))
   .catch((error) => {
+    markAuthDbUnavailable();
     console.error("Auth database init failed; using in-memory fallback", error);
   });
 

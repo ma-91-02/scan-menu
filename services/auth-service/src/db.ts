@@ -67,13 +67,18 @@ export interface AuthSessionRecord {
 
 const databaseUrl = process.env.DATABASE_URL;
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
+let authDbAvailable = Boolean(pool);
 
 export function hasAuthDb() {
-  return Boolean(pool);
+  return authDbAvailable;
+}
+
+export function markAuthDbUnavailable() {
+  authDbAvailable = false;
 }
 
 export async function initAuthDatabase(seedUsers: AuthUserRecord[], seedRestaurants: RestaurantAuthRecord[] = [], seedStaff: RestaurantStaffRecord[] = []) {
-  if (!pool) return;
+  if (!pool || !authDbAvailable) return;
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS scanmenu_users (
