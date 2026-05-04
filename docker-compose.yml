@@ -12,7 +12,10 @@ services:
     image: redis:7-alpine
 
   auth-service:
-    build: .
+    build:
+      context: .
+      args:
+        SERVICE_WORKSPACE: "@scanmenu/auth-service"
     command: npm run start -w @scanmenu/auth-service
     environment:
       NODE_ENV: production
@@ -23,7 +26,10 @@ services:
       - postgres
 
   restaurant-service:
-    build: .
+    build:
+      context: .
+      args:
+        SERVICE_WORKSPACE: "@scanmenu/restaurant-service"
     command: npm run start -w @scanmenu/restaurant-service
     environment:
       NODE_ENV: production
@@ -35,7 +41,10 @@ services:
       - translation-service
 
   order-service:
-    build: .
+    build:
+      context: .
+      args:
+        SERVICE_WORKSPACE: "@scanmenu/order-service"
     command: npm run start -w @scanmenu/order-service
     environment:
       NODE_ENV: production
@@ -48,14 +57,20 @@ services:
       - translation-service
 
   translation-service:
-    build: .
+    build:
+      context: .
+      args:
+        SERVICE_WORKSPACE: "@scanmenu/translation-service"
     command: npm run start -w @scanmenu/translation-service
     environment:
       NODE_ENV: production
       TRANSLATION_SERVICE_PORT: 4104
 
   api-gateway:
-    build: .
+    build:
+      context: .
+      args:
+        SERVICE_WORKSPACE: "@scanmenu/api-gateway"
     command: npm run start -w @scanmenu/api-gateway
     environment:
       NODE_ENV: production
@@ -77,7 +92,12 @@ services:
       - "traefik.http.services.scanmenu-api.loadbalancer.server.port=4000"
 
   web:
-    build: .
+    build:
+      context: .
+      args:
+        SERVICE_WORKSPACE: "@scanmenu/web"
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.scanmenu.your-ma.com}
+        WEB_PUBLIC_API_URL: http://api-gateway:4000
     command: npm run start -w @scanmenu/web
     environment:
       NODE_ENV: production
