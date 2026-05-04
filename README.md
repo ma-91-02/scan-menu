@@ -24,25 +24,21 @@ Scan Menu separates user language from restaurant language:
 
 ## Quick Start
 
+Preferred local setup mirrors Coolify with Docker Compose:
+
 ```bash
 npm install
-npm run dev
+npm run dev:docker
+npm run health
 ```
 
-For the current local session, the working ports are:
-
-- Web dashboard: `http://localhost:3001`
-- API gateway: `http://localhost:4001`
-- Expo Metro: `http://localhost:8081`
-
-Use these environment variables when you want apps to talk to the local gateway:
+Stop Docker services with:
 
 ```bash
-WEB_PUBLIC_API_URL=http://localhost:4001
-EXPO_PUBLIC_API_URL=http://localhost:4001
+npm run dev:down
 ```
 
-For focused development:
+For focused non-Docker development:
 
 ```bash
 npm run dev:web
@@ -57,11 +53,11 @@ npm run dev:translations
 Common local URLs:
 
 - Web dashboard: `http://localhost:3000`
-- API gateway: `http://localhost:4000`
-- Auth service: `http://localhost:4101`
-- Restaurant service: `http://localhost:4102`
-- Order service: `http://localhost:4103`
-- Translation service: `http://localhost:4104`
+- API gateway: `http://localhost:4000/health`
+- Auth service: `http://localhost:4101/health`
+- Restaurant service: `http://localhost:4102/health`
+- Order service: `http://localhost:4103/health`
+- Translation service: `http://localhost:4104/health`
 
 If `3000` or `4000` are already used locally, run:
 
@@ -69,6 +65,8 @@ If `3000` or `4000` are already used locally, run:
 npm run dev:web -- -p 3001
 API_GATEWAY_PORT=4001 npm run dev:gateway
 ```
+
+See [docs/running.md](docs/running.md) for Docker, Coolify, environment variables, and health checks.
 
 ## Architecture
 

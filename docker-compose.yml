@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: scanmenu
       POSTGRES_USER: scanmenu
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - scanmenu_postgres:/var/lib/postgresql/data
 
@@ -17,6 +17,10 @@ services:
     environment:
       NODE_ENV: production
       AUTH_SERVICE_PORT: 4101
+      DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?AUTH_TOKEN_SECRET is required}
+    depends_on:
+      - postgres
 
   restaurant-service:
     build: .
@@ -24,6 +28,11 @@ services:
     environment:
       NODE_ENV: production
       RESTAURANT_SERVICE_PORT: 4102
+      DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
+      TRANSLATION_SERVICE_URL: http://translation-service:4104
+    depends_on:
+      - postgres
+      - translation-service
 
   order-service:
     build: .
@@ -31,6 +40,12 @@ services:
     environment:
       NODE_ENV: production
       ORDER_SERVICE_PORT: 4103
+      DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
+      TRANSLATION_SERVICE_URL: http://translation-service:4104
+      RESTAURANT_SERVICE_URL: http://restaurant-service:4102
+    depends_on:
+      - postgres
+      - translation-service
 
   translation-service:
     build: .
@@ -67,6 +82,7 @@ services:
     environment:
       NODE_ENV: production
       WEB_PUBLIC_API_URL: http://api-gateway:4000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.scanmenu.your-ma.com}
     depends_on:
       - api-gateway
     labels:

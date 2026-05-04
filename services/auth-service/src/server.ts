@@ -1,6 +1,8 @@
 import cors from "cors";
+import crypto from "node:crypto";
+import { promisify } from "node:util";
 import express from "express";
-import type { UserRole } from "@scanmenu/shared";
+import type { StaffRole, UserRole } from "@scanmenu/shared";
 import {
   createSessionDb,
   createUserDb,
@@ -25,6 +27,10 @@ interface DemoUser {
   restaurantId?: string;
   restaurantName?: string;
   permissions?: string[];
+  passwordHash?: string;
+  termsAccepted?: boolean;
+  privacyAccepted?: boolean;
+  consentAt?: string;
 }
 
 interface DemoSession {
@@ -114,7 +120,10 @@ const users: DemoUser[] = [
 
 const sessions = new Map<string, DemoSession>();
 const restaurantRoles = ["owner", "manager", "cashier", "kitchen", "waiter", "viewer"] as const;
-type RestaurantRole = (typeof restaurantRoles)[number];
+type RestaurantRole = StaffRole;
+const defaultDemoPassword = process.env.SCANMENU_DEMO_PASSWORD ?? "password";
+const tokenSecret = process.env.AUTH_TOKEN_SECRET ?? (process.env.NODE_ENV === "production" ? "" : "scanmenu-dev-secret");
+const scryptAsync = promisify(crypto.scrypt);
 
 const rolePermissions: Record<RestaurantRole, string[]> = {
   owner: ["*"],
@@ -126,7 +135,9 @@ const rolePermissions: Record<RestaurantRole, string[]> = {
 };
 
 const port = Number(process.env.AUTH_SERVICE_PORT ?? 4101);
-const dbReady = initAuthDatabase(users as AuthUserRecord[]).catch((error) => {
+const dbReady = prepareSeedUsers()
+  .then((seedUsers) => initAuthDatabase(seedUsers as AuthUserRecord[]))
+  .catch((error) => {
   console.error("Auth database init failed; using in-memory fallback", error);
 });
 
@@ -151,6 +162,12 @@ export function createApp() {
 
   app.get("/restaurants/:restaurantId/staff", async (req, res) => {
     await dbReady;
+    const actor = await authenticateRequest(req);
+    if (!actor || !canManageStaff(actor, req.params.restaurantId)) {
+      res.status(403).json({ error: "Staff management permission is required" });
+      return;
+    }
+
     const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
     res.json({
       data: sourceUsers.filter((user) => user.restaurantId === req.params.restaurantId && isRestaurantRole(user.role))
@@ -175,6 +192,7 @@ export function createApp() {
     return;
   }
 
+  const password = String(req.body.password ?? "");
   const user: DemoUser = {
     id: `usr_${Date.now()}`,
     name: String(req.body.name ?? "Customer"),
@@ -182,7 +200,11 @@ export function createApp() {
     email,
     phone,
     role: "customer",
-    preferredLanguage: String(req.body.preferredLanguage ?? "en")
+    preferredLanguage: String(req.body.preferredLanguage ?? "en"),
+    passwordHash: await hashPassword(password || defaultDemoPassword),
+    termsAccepted,
+    privacyAccepted,
+    consentAt: normalizeConsentAt(req.body.consentAt)
   };
 
   if (hasAuthDb()) await createUserDb(user);
@@ -206,12 +228,18 @@ export function createApp() {
   const requestedRole = String(req.body.role ?? "viewer");
   const role = restaurantRoles.includes(requestedRole as RestaurantRole) ? (requestedRole as RestaurantRole) : "viewer";
   const restaurantId = String(req.body.restaurantId ?? "rst_bistro_01");
+  const actor = await authenticateRequest(req);
+  if (!actor || !canManageStaff(actor, restaurantId)) {
+    res.status(403).json({ error: "Staff management permission is required" });
+    return;
+  }
 
   if (await isIdentityTaken({ email, username })) {
     res.status(409).json({ error: "Email, phone, or username is already registered" });
     return;
   }
 
+  const password = String(req.body.password ?? "");
   const user: DemoUser = {
     id: `usr_${Date.now()}`,
     name: String(req.body.name ?? "Staff Member"),
@@ -221,7 +249,8 @@ export function createApp() {
     preferredLanguage: String(req.body.preferredLanguage ?? "en"),
     restaurantId,
     restaurantName: String(req.body.restaurantName ?? "Bistro Aurora"),
-    permissions: rolePermissions[role]
+    permissions: rolePermissions[role],
+    passwordHash: await hashPassword(password || defaultDemoPassword)
   };
 
   if (hasAuthDb()) await createUserDb(user);
@@ -272,7 +301,11 @@ export function createApp() {
     role: "restaurant_owner",
     preferredLanguage: String(req.body.preferredLanguage ?? "en"),
     restaurantId: `rst_${Date.now()}`,
-    restaurantName
+    restaurantName,
+    passwordHash: await hashPassword(password),
+    termsAccepted,
+    privacyAccepted,
+    consentAt: normalizeConsentAt(req.body.consentAt)
   };
 
   if (hasAuthDb()) await createUserDb(user);
@@ -298,9 +331,10 @@ export function createApp() {
     return;
   }
 
+  const password = String(req.body.password ?? "");
   const user = await findUserByIdentifier(identifier);
 
-  if (!user) {
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
     res.status(401).json({ error: "Invalid login credentials" });
     return;
   }
@@ -318,6 +352,10 @@ export function createApp() {
 
   app.get("/session/:sessionId", async (req, res) => {
   await dbReady;
+  if (!verifySessionToken(req.params.sessionId)) {
+    res.status(401).json({ error: "Invalid session token" });
+    return;
+  }
   const session = hasAuthDb() ? await getSessionDb(req.params.sessionId) : sessions.get(req.params.sessionId);
 
   if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
@@ -364,6 +402,24 @@ export function createApp() {
   return app;
 }
 
+async function authenticateRequest(req: express.Request) {
+  const sessionId = String(req.header("x-session-id") ?? req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? "");
+  if (!sessionId || !verifySessionToken(sessionId)) return undefined;
+
+  const session = hasAuthDb() ? await getSessionDb(sessionId) : sessions.get(sessionId);
+  if (!session || new Date(session.expiresAt).getTime() < Date.now()) return undefined;
+
+  const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
+  return sourceUsers.find((user) => user.id === session.userId);
+}
+
+function canManageStaff(user: DemoUser | AuthUserRecord, restaurantId: string) {
+  if (user.role === "restaurant_owner" && user.restaurantId === restaurantId) return true;
+  if (user.role === "owner" && user.restaurantId === restaurantId) return true;
+  if (user.role === "manager" && user.restaurantId === restaurantId && user.permissions?.includes("staff:write")) return true;
+  return false;
+}
+
 function getRedirectForRole(role: UserRole) {
   if (role === "platform_owner") {
     return "/admin";
@@ -407,10 +463,17 @@ async function findUserByIdentifier(identifier: string) {
 }
 
 async function createSession(userId: string) {
+  if (!tokenSecret) {
+    throw new Error("AUTH_TOKEN_SECRET is required in production");
+  }
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 8);
+  const issuedAt = now.getTime();
+  const nonce = crypto.randomBytes(16).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ sub: userId, iat: issuedAt, exp: expiresAt.getTime(), nonce })).toString("base64url");
+  const signature = crypto.createHmac("sha256", tokenSecret).update(payload).digest("base64url");
   const session: AuthSessionRecord = {
-    id: `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    id: `${payload}.${signature}`,
     userId,
     createdAt: now.toISOString(),
     expiresAt: expiresAt.toISOString()
@@ -419,6 +482,51 @@ async function createSession(userId: string) {
   if (hasAuthDb()) await createSessionDb(session);
   else sessions.set(session.id, session);
   return session;
+}
+
+async function prepareSeedUsers() {
+  const passwordHash = await hashPassword(defaultDemoPassword);
+  users.forEach((user) => {
+    user.passwordHash ??= passwordHash;
+  });
+  return users;
+}
+
+async function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16).toString("base64url");
+  const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `scrypt:${salt}:${derivedKey.toString("base64url")}`;
+}
+
+async function verifyPassword(password: string, storedHash?: string) {
+  if (!storedHash) return false;
+  const [scheme, salt, expected] = storedHash.split(":");
+  if (scheme !== "scrypt" || !salt || !expected) return false;
+  const actual = (await scryptAsync(password, salt, 64)) as Buffer;
+  const expectedBuffer = Buffer.from(expected, "base64url");
+  return expectedBuffer.length === actual.length && crypto.timingSafeEqual(actual, expectedBuffer);
+}
+
+function verifySessionToken(token: string) {
+  if (!tokenSecret) return false;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return false;
+  const expected = crypto.createHmac("sha256", tokenSecret).update(payload).digest("base64url");
+  const provided = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (provided.length !== expectedBuffer.length || !crypto.timingSafeEqual(provided, expectedBuffer)) return false;
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { exp?: number };
+    return typeof data.exp === "number" && data.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function normalizeConsentAt(value: unknown) {
+  const date = value ? new Date(String(value)) : new Date();
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
 async function isIdentityTaken(identity: { email: string; phone?: string; username: string }) {

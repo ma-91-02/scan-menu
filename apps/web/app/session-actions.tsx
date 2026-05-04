@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const sessionStorageKey = "scanmenu-session";
 
 interface SessionUser {
@@ -63,6 +63,10 @@ export function SessionBar({ expectedArea }: SessionBarProps) {
 
     localStorage.removeItem(sessionStorageKey);
     window.location.href = "/";
+  }
+
+  if (!user && status === "No active session") {
+    return null;
   }
 
   return (

@@ -1,5 +1,4 @@
-import { supportedLanguages } from "@scanmenu/shared";
-import { getPublicPage } from "../lib/api";
+import { getLanguages, getPublicPage } from "../lib/api";
 import { LanguageBootstrap, LanguageSelect, LoginForm, RegistrationForm } from "./public-actions";
 
 interface PublicHomePageProps {
@@ -11,9 +10,9 @@ interface PublicHomePageProps {
 export default async function PublicHomePage({ searchParams }: PublicHomePageProps) {
   const params = await searchParams;
   const language = params?.lang ?? "en";
-  const content = await getPublicPage(language);
+  const [content, remoteLanguages] = await Promise.all([getPublicPage(language), getLanguages()]);
   const isRtl = content.direction === "rtl";
-  const languages = supportedLanguages.map((item) => ({
+  const languages = remoteLanguages.map((item) => ({
     code: String(item.code),
     nativeName: item.nativeName,
     flag: flagForLanguage(String(item.code))

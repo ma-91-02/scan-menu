@@ -59,6 +59,7 @@ export default function App() {
   const [password, setPassword] = useState("password");
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [removedIngredientIdsByItem, setRemovedIngredientIdsByItem] = useState<Record<string, string[]>>({});
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
   const [note, setNote] = useState("");
@@ -223,10 +224,13 @@ export default function App() {
         customerLanguage: language,
         restaurantLanguage: restaurant.operatingLanguage,
         cart,
+        removedIngredientIdsByItem,
         note,
-        tableNumber
+        tableNumber,
+        paymentMethod: paymentMode === "online" ? "card" : "cash"
       });
       setCart({});
+      setRemovedIngredientIdsByItem({});
       setNote("");
       await refreshOrders(customer);
       setScreen("thanks");
@@ -355,7 +359,29 @@ export default function App() {
           />
         ) : null}
         {screen === "detail" && selectedItem ? (
-          <DetailScreen t={t} language={language} item={selectedItem} quantity={cart[selectedItem.id] ?? 1} onBack={goBack} onBasket={() => setScreen("basket")} onAdd={() => addToCart(selectedItem.id)} onInc={() => addToCart(selectedItem.id)} onDec={() => addToCart(selectedItem.id, -1)} />
+          <DetailScreen
+            t={t}
+            language={language}
+            item={selectedItem}
+            quantity={cart[selectedItem.id] ?? 1}
+            removedIngredientIds={removedIngredientIdsByItem[selectedItem.id] ?? []}
+            onToggleIngredient={(ingredientId) =>
+              setRemovedIngredientIdsByItem((current) => {
+                const removed = current[selectedItem.id] ?? [];
+                return {
+                  ...current,
+                  [selectedItem.id]: removed.includes(ingredientId)
+                    ? removed.filter((id) => id !== ingredientId)
+                    : [...removed, ingredientId]
+                };
+              })
+            }
+            onBack={goBack}
+            onBasket={() => setScreen("basket")}
+            onAdd={() => addToCart(selectedItem.id)}
+            onInc={() => addToCart(selectedItem.id)}
+            onDec={() => addToCart(selectedItem.id, -1)}
+          />
         ) : null}
         {screen === "basket" ? (
           <BasketScreen

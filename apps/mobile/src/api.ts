@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { supportedLanguages as sharedSupportedLanguages } from "@scanmenu/shared";
 
 interface ApiResponse<T> {
   data: T;
@@ -24,6 +25,11 @@ export interface MenuItem {
   isAvailable: boolean;
   categoryId?: string;
   ingredientIds?: string[];
+  ingredients?: Array<{
+    id: string;
+    displayName: string;
+    name: Record<string, string>;
+  }>;
 }
 
 export interface OrderLine {
@@ -72,18 +78,7 @@ export interface AuthResult {
   accessToken?: string;
 }
 
-export const supportedLanguages: Array<{
-  code: string;
-  nativeName: string;
-  direction: "ltr" | "rtl";
-}> = [
-  { code: "ar", nativeName: "العربية", direction: "rtl" },
-  { code: "en", nativeName: "English", direction: "ltr" },
-  { code: "ru", nativeName: "Русский", direction: "ltr" },
-  { code: "tr", nativeName: "Türkçe", direction: "ltr" },
-  { code: "fr", nativeName: "Français", direction: "ltr" },
-  { code: "es", nativeName: "Español", direction: "ltr" }
-];
+export const supportedLanguages = sharedSupportedLanguages;
 
 export const fallbackRestaurants: Restaurant[] = [
   {
@@ -129,12 +124,12 @@ export const fallbackMenu: MenuItem[] = [
 ];
 
 const localCandidates = Platform.OS === "android"
-  ? ["http://10.0.2.2:4001", "http://10.0.2.2:4000"]
-  : ["http://localhost:4001", "http://127.0.0.1:4001", "http://localhost:4000"];
+  ? ["http://10.0.2.2:4000", "http://10.0.2.2:4001"]
+  : ["http://localhost:4000", "http://127.0.0.1:4000", "http://localhost:4001"];
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL;
-const apiCandidates = configuredApiUrl ? [configuredApiUrl, ...localCandidates] : localCandidates;
-const requestTimeoutMs = 1200;
+const apiCandidates = Array.from(new Set(configuredApiUrl ? [configuredApiUrl, ...localCandidates] : localCandidates));
+const requestTimeoutMs = Number(process.env.EXPO_PUBLIC_API_TIMEOUT_MS ?? 4500);
 let activeApiUrl = apiCandidates[0]!;
 
 export function getApiUrl() {
@@ -218,8 +213,10 @@ export async function createOrder(input: {
   customerLanguage: string;
   restaurantLanguage: string;
   cart: Record<string, number>;
+  removedIngredientIdsByItem?: Record<string, string[]>;
   note?: string;
   tableNumber?: string;
+  paymentMethod?: "cash" | "card";
 }) {
   const note = [input.note, input.tableNumber ? `table ${input.tableNumber}` : ""].filter(Boolean).join("; ");
   const lines = Object.entries(input.cart)
@@ -227,7 +224,8 @@ export async function createOrder(input: {
     .map(([menuItemId, quantity]) => ({
       menuItemId,
       quantity,
-      customerNote: note || undefined
+      customerNote: note || undefined,
+      removedIngredientIds: input.removedIngredientIdsByItem?.[menuItemId] ?? []
     }));
 
   return requestData<CustomerOrder>("/orders", {
@@ -238,6 +236,8 @@ export async function createOrder(input: {
       customerId: input.customerId,
       customerLanguage: input.customerLanguage,
       restaurantLanguage: input.restaurantLanguage,
+      tableNumber: input.tableNumber,
+      paymentMethod: input.paymentMethod ?? "cash",
       lines
     })
   });
@@ -264,7 +264,8 @@ export async function requestWaiter(input: {
           quantity: 1,
           customerNote: input.tableNumber ? `waiter; table ${input.tableNumber}` : "waiter"
         }
-      ]
+      ],
+      tableNumber: input.tableNumber
     })
   });
 }

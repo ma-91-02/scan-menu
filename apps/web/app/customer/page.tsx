@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supportedLanguages } from "@scanmenu/shared";
+import { supportedLanguages, type SupportedLanguage } from "@scanmenu/shared";
 
 type ViewId = "menu" | "waiter" | "discounts" | "settings";
 type AuthMode = "login" | "register";
@@ -21,6 +21,10 @@ interface CustomerMenuItem {
   displayDescription: string;
   price: number;
   currency: string;
+  ingredients?: Array<{
+    id: string;
+    displayName: string;
+  }>;
 }
 
 interface CustomerUser {
@@ -41,7 +45,7 @@ interface CustomerOrder {
   }>;
 }
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const languageStorageKey = "scanmenu-customer-language";
 const customerStorageKey = "scanmenu-customer-user";
 const sessionStorageKey = "scanmenu-session";
@@ -87,6 +91,7 @@ const translations = {
     name: "الاسم",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
+    termsConsent: "أوافق على شروط الاستخدام وسياسة الخصوصية",
     signedIn: "مسجل الدخول",
     signOut: "تسجيل خروج",
     authRequired: "سجّل أو ادخل أولًا لإرسال الطلب.",
@@ -125,6 +130,7 @@ const translations = {
     name: "Name",
     email: "Email",
     password: "Password",
+    termsConsent: "I agree to the Terms of Use and Privacy Policy",
     signedIn: "Signed in",
     signOut: "Sign out",
     authRequired: "Register or log in before ordering.",
@@ -163,6 +169,7 @@ const translations = {
     name: "Имя",
     email: "Email",
     password: "Пароль",
+    termsConsent: "Я соглашаюсь с Условиями использования и Политикой конфиденциальности",
     signedIn: "Вход выполнен",
     signOut: "Выйти",
     authRequired: "Зарегистрируйтесь или войдите перед заказом.",
@@ -187,6 +194,7 @@ const translations = {
 
 export default function CustomerPage() {
   const [language, setLanguage] = useState("");
+  const [languages, setLanguages] = useState<SupportedLanguage[]>(supportedLanguages);
   const [activeView, setActiveView] = useState<ViewId>("menu");
   const [authMode, setAuthMode] = useState<AuthMode>("register");
   const [restaurants, setRestaurants] = useState<Restaurant[]>(fallbackRestaurants);
@@ -195,11 +203,13 @@ export default function CustomerPage() {
   const [qrInput, setQrInput] = useState("");
   const [menu, setMenu] = useState<CustomerMenuItem[]>(fallbackMenu);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [removedIngredientsByItem, setRemovedIngredientsByItem] = useState<Record<string, string[]>>({});
   const [note, setNote] = useState("no onions");
   const [customer, setCustomer] = useState<CustomerUser | null>(null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [status, setStatus] = useState("");
   const [lastOrder, setLastOrder] = useState<CustomerOrder | null>(null);
 
@@ -220,6 +230,11 @@ export default function CustomerPage() {
   ];
 
   useEffect(() => {
+    fetch(`${apiUrl}/translations/languages`)
+      .then((response) => response.json())
+      .then((payload) => setLanguages(payload.data?.length ? payload.data : supportedLanguages))
+      .catch(() => setLanguages(supportedLanguages));
+
     const params = new URLSearchParams(window.location.search);
     const urlLanguage = params.get("lang");
     const storedLanguage = localStorage.getItem(languageStorageKey);
@@ -274,6 +289,24 @@ export default function CustomerPage() {
       .catch(() => setMenu(fallbackMenu));
   }, [language, selectedRestaurantId]);
 
+  useEffect(() => {
+    if (!customer) {
+      return;
+    }
+
+    const events = new EventSource(`${apiUrl}/orders/events?customerId=${customer.id}&language=${currentLanguage}`);
+    events.addEventListener("orders", (event) => {
+      const payload = JSON.parse((event as MessageEvent).data);
+      setLastOrder(payload.data?.[0] ?? null);
+    });
+    events.addEventListener("snapshot", (event) => {
+      const payload = JSON.parse((event as MessageEvent).data);
+      setLastOrder(payload.data?.[0] ?? null);
+    });
+
+    return () => events.close();
+  }, [customer, currentLanguage]);
+
   async function submitAuth() {
     setStatus("");
 
@@ -298,7 +331,7 @@ export default function CustomerPage() {
       return;
     }
 
-    if (!authName.trim() || !authEmail.trim()) {
+    if (!authName.trim() || !authEmail.trim() || !acceptedPolicies) {
       setStatus(t.failed);
       return;
     }
@@ -310,7 +343,10 @@ export default function CustomerPage() {
         name: authName,
         email: authEmail,
         username: `${authEmail.split("@")[0]}-${Date.now()}`,
-        preferredLanguage: currentLanguage
+        preferredLanguage: currentLanguage,
+        termsAccepted: acceptedPolicies,
+        privacyAccepted: acceptedPolicies,
+        consentAt: new Date().toISOString()
       })
     });
     const payload = await response.json();
@@ -370,7 +406,8 @@ export default function CustomerPage() {
       .map(([menuItemId, itemQuantity]) => ({
         menuItemId,
         quantity: itemQuantity,
-        customerNote: `${note}; table ${tableNumber}`
+        customerNote: `${note}; table ${tableNumber}`,
+        removedIngredientIds: removedIngredientsByItem[menuItemId] ?? []
       }));
 
     const response = await fetch(`${apiUrl}/orders`, {
@@ -381,6 +418,8 @@ export default function CustomerPage() {
         customerId: customer.id,
         customerLanguage: currentLanguage,
         restaurantLanguage: selectedRestaurant.operatingLanguage,
+        tableNumber,
+        paymentMethod: "cash",
         lines
       })
     });
@@ -393,7 +432,30 @@ export default function CustomerPage() {
 
     setLastOrder(payload.data);
     setCart({});
+    setRemovedIngredientsByItem({});
     setStatus(t.sent);
+  }
+
+  async function requestWaiter() {
+    if (!customer) {
+      setStatus(t.authRequired);
+      return;
+    }
+
+    const response = await fetch(`${apiUrl}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        restaurantId: selectedRestaurant.id,
+        customerId: customer.id,
+        customerLanguage: currentLanguage,
+        restaurantLanguage: selectedRestaurant.operatingLanguage,
+        tableNumber,
+        lines: [{ menuItemId: "waiter_request", quantity: 1, customerNote: t.waiterTitle }]
+      })
+    });
+
+    setStatus(response.ok ? t.waiterSent : t.failed);
   }
 
   if (!language) {
@@ -404,7 +466,7 @@ export default function CustomerPage() {
           <h1>{translations.ar.chooseLanguage}</h1>
           <p>{translations.ar.languageHint}</p>
           <div className="language-choice-grid">
-            {supportedLanguages.slice(0, 8).map((item) => (
+            {languages.slice(0, 8).map((item) => (
               <button key={item.code} type="button" onClick={() => setLanguage(String(item.code))}>
                 {item.nativeName}
               </button>
@@ -456,6 +518,16 @@ export default function CustomerPage() {
             {authMode === "login" ? (
               <input placeholder={t.password} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
             ) : null}
+            {authMode === "register" ? (
+              <label className="mobile-consent-row">
+                <input
+                  type="checkbox"
+                  checked={acceptedPolicies}
+                  onChange={(event) => setAcceptedPolicies(event.target.checked)}
+                />
+                {t.termsConsent}
+              </label>
+            ) : null}
             <button type="button" onClick={submitAuth}>
               {authMode === "login" ? t.login : t.register}
             </button>
@@ -504,6 +576,34 @@ export default function CustomerPage() {
                           {t.add}
                         </button>
                       </footer>
+                      {item.ingredients?.length ? (
+                        <div className="customer-ingredient-list">
+                          {item.ingredients.map((ingredient) => {
+                            const removed = removedIngredientsByItem[item.id]?.includes(ingredient.id) ?? false;
+                            return (
+                              <button
+                                className={removed ? "removed" : ""}
+                                key={ingredient.id}
+                                type="button"
+                                onClick={() =>
+                                  setRemovedIngredientsByItem((current) => {
+                                    const itemRemoved = current[item.id] ?? [];
+                                    return {
+                                      ...current,
+                                      [item.id]: itemRemoved.includes(ingredient.id)
+                                        ? itemRemoved.filter((id) => id !== ingredient.id)
+                                        : [...itemRemoved, ingredient.id]
+                                    };
+                                  })
+                                }
+                              >
+                                {removed ? "No " : ""}
+                                {ingredient.displayName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   </article>
                 ))}
@@ -515,7 +615,7 @@ export default function CustomerPage() {
             <section className="mobile-action-panel">
               <h2>{t.waiterTitle}</h2>
               <p>{t.waiterBody}</p>
-              <button type="button" onClick={() => setStatus(t.waiterSent)}>{t.callWaiter}</button>
+              <button type="button" onClick={requestWaiter}>{t.callWaiter}</button>
             </section>
           ) : null}
 
@@ -536,7 +636,7 @@ export default function CustomerPage() {
               <label>
                 {t.chooseLanguage}
                 <select value={currentLanguage} onChange={(event) => setLanguage(event.target.value)}>
-                  {supportedLanguages.slice(0, 8).map((item) => (
+                  {languages.slice(0, 8).map((item) => (
                     <option key={item.code} value={String(item.code)}>
                       {item.nativeName}
                     </option>

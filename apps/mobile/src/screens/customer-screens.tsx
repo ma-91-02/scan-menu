@@ -169,8 +169,34 @@ export function MenuScreen(props: {
   );
 }
 
-export function DetailScreen({ t, language, item, quantity, onBack, onBasket, onAdd, onInc, onDec }: { t: AppCopy; language: string; item: MenuItem; quantity: number; onBack: () => void; onBasket: () => void; onAdd: () => void; onInc: () => void; onDec: () => void }) {
-  const ingredients = item.displayDescription.split(",").map((part) => part.trim()).filter(Boolean);
+export function DetailScreen({
+  t,
+  language,
+  item,
+  quantity,
+  removedIngredientIds,
+  onToggleIngredient,
+  onBack,
+  onBasket,
+  onAdd,
+  onInc,
+  onDec
+}: {
+  t: AppCopy;
+  language: string;
+  item: MenuItem;
+  quantity: number;
+  removedIngredientIds: string[];
+  onToggleIngredient: (ingredientId: string) => void;
+  onBack: () => void;
+  onBasket: () => void;
+  onAdd: () => void;
+  onInc: () => void;
+  onDec: () => void;
+}) {
+  const ingredients = item.ingredients?.length
+    ? item.ingredients
+    : item.displayDescription.split(",").map((part, index) => ({ id: `text-${index}`, displayName: part.trim() })).filter((ingredient) => ingredient.displayName);
   return (
     <View style={styles.fullScreen}>
       <TopBar language={language} onBack={onBack} />
@@ -186,10 +212,12 @@ export function DetailScreen({ t, language, item, quantity, onBack, onBasket, on
           {ingredients.length ? (
             <View style={styles.ingredientGrid}>
               {ingredients.slice(0, 8).map((ingredient) => (
-                <View key={ingredient} style={styles.ingredientItem}>
+                <View key={ingredient.id} style={styles.ingredientItem}>
                   <Text style={styles.ingredientDot}>●</Text>
-                  <Text numberOfLines={2} style={styles.ingredientText}>{ingredient}</Text>
-                  <Pressable style={styles.addMini}><Text style={styles.addMiniText}>{t.add}</Text></Pressable>
+                  <Text numberOfLines={2} style={styles.ingredientText}>{ingredient.displayName}</Text>
+                  <Pressable onPress={() => onToggleIngredient(ingredient.id)} style={styles.addMini}>
+                    <Text style={styles.addMiniText}>{removedIngredientIds.includes(ingredient.id) ? "No" : t.add}</Text>
+                  </Pressable>
                 </View>
               ))}
             </View>

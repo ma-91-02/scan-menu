@@ -516,6 +516,48 @@ h2 {
   font-weight: 900;
 }
 
+.mobile-consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #32443d;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.customer-ingredient-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.customer-ingredient-list button {
+  border: 1px solid #d9e4df;
+  border-radius: 999px;
+  background: #fff;
+  color: #126b5d;
+  font-size: 11px;
+  padding: 6px 9px;
+}
+
+.customer-ingredient-list button.removed {
+  background: #fff1ec;
+  border-color: #d64f2a;
+  color: #9d321a;
+}
+
+.registration-consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--brand-strong);
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 14px;
+}
+
 .mobile-menu-item h3 {
   font-size: 18px;
 }
@@ -1107,10 +1149,12 @@ h2 {
 }
 
 .session-bar {
-  display: flex;
+  display: grid;
   align-items: center;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid #d4e2dd;
   border-radius: 8px;
   background: white;
@@ -1140,9 +1184,10 @@ h2 {
 .restaurant-console {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
   background: #95a19b;
   color: #1f2f2b;
+  overflow-x: hidden;
 }
 
 .restaurant-sidebar {
@@ -1151,6 +1196,7 @@ h2 {
   height: 100vh;
   display: grid;
   align-content: start;
+  grid-template-rows: auto repeat(7, auto) 1fr auto;
   gap: 6px;
   padding: 34px 18px;
   background: #ffffff;
@@ -1171,13 +1217,15 @@ h2 {
 }
 
 .restaurant-sidebar .logout-link {
-  margin-top: 48px;
   color: #1f2f2b;
 }
 
 .restaurant-workspace {
   display: grid;
   gap: 22px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   padding: 28px;
 }
 
@@ -1415,6 +1463,17 @@ h2 {
   gap: 12px;
 }
 
+.sidebar-bottom-actions {
+  align-self: end;
+  display: grid;
+  gap: 10px;
+}
+
+.compact-owner-sidebar .logout-button {
+  background: #102a2f;
+  color: #ffffff;
+}
+
 .compact-owner-sidebar strong {
   margin-bottom: 12px;
   color: #243a34;
@@ -1446,13 +1505,19 @@ h2 {
 }
 
 .owner-topbar {
-  display: flex;
+  display: grid;
   align-items: stretch;
-  justify-content: space-between;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 220px) minmax(280px, 420px);
   gap: 18px;
+  max-width: 100%;
   border-radius: 10px;
   padding: 22px;
   background: #ffffff;
+}
+
+.owner-topbar > div {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .owner-topbar p,
@@ -1476,16 +1541,18 @@ h2 {
 
 .owner-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
   gap: 10px;
-  min-width: 420px;
+  min-width: min(100%, 280px);
+  width: 100%;
 }
 
 .owner-language-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  grid-template-columns: minmax(160px, 1fr);
   gap: 10px;
-  min-width: 380px;
+  min-width: min(100%, 220px);
+  width: 100%;
 }
 
 .owner-language-controls label {
@@ -1507,6 +1574,7 @@ h2 {
 .owner-stats span {
   display: grid;
   place-items: center;
+  min-width: 0;
   border-radius: 8px;
   padding: 12px;
   background: #f3f7f5;
@@ -1520,7 +1588,7 @@ h2 {
 
 .owner-module-grid {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -1565,7 +1633,11 @@ h2 {
 
 .inline-create button,
 .owner-table-row button,
-.pill-list span {
+.pill-list span,
+.section-add-button,
+.catalog-search-panel button,
+.category-board button,
+.selected-ingredient-list button {
   border: 0;
   border-radius: 6px;
   padding: 10px 14px;
@@ -1573,6 +1645,7 @@ h2 {
   color: #ffffff;
   font: inherit;
   font-weight: 900;
+  cursor: pointer;
 }
 
 .owner-table {
@@ -1590,6 +1663,19 @@ h2 {
   padding: 12px;
   background: #ffffff;
   border-bottom: 1px solid #d4e2dd;
+}
+
+.owner-table-row.menu-row {
+  grid-template-columns: minmax(150px, 1fr) minmax(220px, 1.5fr) 110px;
+}
+
+.menu-item-thumb {
+  width: 44px;
+  height: 44px;
+  margin-inline-end: 10px;
+  border-radius: 6px;
+  object-fit: cover;
+  vertical-align: middle;
 }
 
 .owner-table-row.header {
@@ -1645,6 +1731,96 @@ h2 {
   background: #f8fbfa;
 }
 
+.menu-empty-state {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+  border: 1px dashed #aac1b8;
+  border-radius: 8px;
+  padding: 18px;
+  background: #f8fbfa;
+  color: #3d6257;
+}
+
+.menu-empty-state strong {
+  color: #13251f;
+  font-size: 20px;
+}
+
+.menu-empty-state p {
+  max-width: 760px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.catalog-search-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  border: 1px solid #d4e2dd;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fbfa;
+}
+
+.catalog-search-panel input,
+.ingredient-picker input {
+  border: 1px solid #aac1b8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.catalog-suggestion-list,
+.category-board,
+.selected-ingredient-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.catalog-suggestion-list button {
+  background: #eef5f2;
+  color: #243a34;
+}
+
+.category-board {
+  margin-bottom: 16px;
+}
+
+.category-board button {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  background: #eef5f2;
+  color: #243a34;
+  text-align: start;
+}
+
+.category-board button.active,
+.category-board button:hover,
+.catalog-suggestion-list button:hover {
+  background: #3d6257;
+  color: #ffffff;
+}
+
+.category-board button strong {
+  font-size: 13px;
+}
+
+.ingredient-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.selected-ingredient-list button {
+  background: #3d6257;
+}
+
+.ingredient-suggestions button {
+  font-size: 14px;
+}
+
 .menu-builder label {
   display: grid;
   gap: 7px;
@@ -1657,6 +1833,40 @@ h2 {
   border-radius: 6px;
   padding: 10px 12px;
   font: inherit;
+}
+
+.restaurant-profile-form {
+  gap: 14px;
+  border: 1px solid #d4e2dd;
+  border-radius: 8px;
+  padding: 18px;
+  background: #f8fbfa;
+}
+
+.restaurant-profile-form label {
+  display: grid;
+  gap: 7px;
+  color: #3d6257;
+  font-weight: 900;
+}
+
+.restaurant-profile-form input {
+  min-height: 44px;
+  border: 1px solid #aac1b8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #ffffff;
+}
+
+.restaurant-profile-form .public-button {
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 16px;
+  background: #243a34;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 900;
 }
 
 .ingredient-grid {
@@ -1742,6 +1952,33 @@ h2 {
   justify-content: center;
   width: min(560px, 100%);
   margin: 0 auto;
+}
+
+@media (max-width: 1180px) {
+  .restaurant-console {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .restaurant-sidebar {
+    padding: 28px 14px;
+  }
+
+  .restaurant-sidebar a {
+    font-size: 20px;
+  }
+
+  .owner-topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-stats,
+  .owner-language-controls {
+    max-width: 100%;
+  }
+
+  .session-bar {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 980px) {

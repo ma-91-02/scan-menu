@@ -781,7 +781,7 @@ app.get("/allergens/:language", (req, res) => {
     const targetLanguage = (req.body.targetLanguage ?? "en") as LanguageCode;
     const phraseKey = text.trim().toLowerCase().replace(/\s+/g, "_");
     const phrase = phrasebook[text] ?? phrasebook[phraseKey];
-    const translatedText = phrase?.[targetLanguage] ?? `[${targetLanguage}] ${text}`;
+    const translatedText = phrase?.[targetLanguage] ?? sourceText;
 
     res.json({
       data: {
@@ -789,7 +789,7 @@ app.get("/allergens/:language", (req, res) => {
         sourceLanguage: req.body.sourceLanguage ?? "auto",
         targetLanguage,
         translatedText,
-        provider: phrase ? "scanmenu-phrasebook" : "placeholder"
+        provider: phrase ? "scanmenu-phrasebook" : "source-fallback"
       }
     });
   });

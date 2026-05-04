@@ -12,6 +12,10 @@ export interface AuthUserRecord {
   restaurantId?: string;
   restaurantName?: string;
   permissions?: string[];
+  passwordHash?: string;
+  termsAccepted?: boolean;
+  privacyAccepted?: boolean;
+  consentAt?: string;
 }
 
 export interface AuthSessionRecord {
@@ -43,8 +47,17 @@ export async function initAuthDatabase(seedUsers: AuthUserRecord[]) {
       restaurant_id text,
       restaurant_name text,
       permissions jsonb NOT NULL DEFAULT '[]',
+      password_hash text,
+      terms_accepted boolean NOT NULL DEFAULT false,
+      privacy_accepted boolean NOT NULL DEFAULT false,
+      consent_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+
+    ALTER TABLE scanmenu_users ADD COLUMN IF NOT EXISTS password_hash text;
+    ALTER TABLE scanmenu_users ADD COLUMN IF NOT EXISTS terms_accepted boolean NOT NULL DEFAULT false;
+    ALTER TABLE scanmenu_users ADD COLUMN IF NOT EXISTS privacy_accepted boolean NOT NULL DEFAULT false;
+    ALTER TABLE scanmenu_users ADD COLUMN IF NOT EXISTS consent_at timestamptz;
 
     CREATE TABLE IF NOT EXISTS scanmenu_sessions (
       id text PRIMARY KEY,
@@ -77,11 +90,18 @@ export async function findUserDb(predicate: { email?: string; phone?: string; us
 }
 
 export async function createUserDb(user: AuthUserRecord, ignoreConflict = false) {
-  const conflict = ignoreConflict ? "ON CONFLICT (id) DO NOTHING" : "";
+  const conflict = ignoreConflict
+    ? `ON CONFLICT (id) DO UPDATE SET
+        password_hash = COALESCE(scanmenu_users.password_hash, EXCLUDED.password_hash),
+        terms_accepted = scanmenu_users.terms_accepted OR EXCLUDED.terms_accepted,
+        privacy_accepted = scanmenu_users.privacy_accepted OR EXCLUDED.privacy_accepted,
+        consent_at = COALESCE(scanmenu_users.consent_at, EXCLUDED.consent_at)`
+    : "";
   await pool!.query(
     `INSERT INTO scanmenu_users (
-      id, name, username, email, phone, role, preferred_language, restaurant_id, restaurant_name, permissions
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ${conflict}`,
+      id, name, username, email, phone, role, preferred_language, restaurant_id, restaurant_name, permissions,
+      password_hash, terms_accepted, privacy_accepted, consent_at
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ${conflict}`,
     [
       user.id,
       user.name,
@@ -92,7 +112,11 @@ export async function createUserDb(user: AuthUserRecord, ignoreConflict = false)
       user.preferredLanguage,
       user.restaurantId ?? null,
       user.restaurantName ?? null,
-      JSON.stringify(user.permissions ?? [])
+      JSON.stringify(user.permissions ?? []),
+      user.passwordHash ?? null,
+      user.termsAccepted ?? false,
+      user.privacyAccepted ?? false,
+      user.consentAt ?? null
     ]
   );
   return user;
@@ -126,7 +150,11 @@ function mapUser(row: Record<string, unknown>): AuthUserRecord {
     preferredLanguage: String(row.preferred_language),
     restaurantId: row.restaurant_id ? String(row.restaurant_id) : undefined,
     restaurantName: row.restaurant_name ? String(row.restaurant_name) : undefined,
-    permissions: Array.isArray(row.permissions) ? row.permissions.map(String) : []
+    permissions: Array.isArray(row.permissions) ? row.permissions.map(String) : [],
+    passwordHash: row.password_hash ? String(row.password_hash) : undefined,
+    termsAccepted: Boolean(row.terms_accepted),
+    privacyAccepted: Boolean(row.privacy_accepted),
+    consentAt: row.consent_at ? new Date(String(row.consent_at)).toISOString() : undefined
   };
 }
 

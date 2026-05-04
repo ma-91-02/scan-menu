@@ -1,7 +1,7 @@
-import type { ApiResponse, LocalizedPublicPageContent, MenuItem, Order, PublicPageContent } from "@scanmenu/shared";
+import type { ApiResponse, LocalizedPublicPageContent, MenuItem, Order, PublicPageContent, SupportedLanguage } from "@scanmenu/shared";
 import { supportedLanguages } from "@scanmenu/shared";
 
-export const apiUrl = process.env.WEB_PUBLIC_API_URL ?? "http://localhost:4001";
+export const apiUrl = process.env.WEB_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const fallbackOrders: Order[] = [
   {
@@ -138,7 +138,7 @@ async function fetchData<T>(path: string, fallback: T): Promise<T> {
 
 export async function getDashboardData() {
   const [languages, orders, menu] = await Promise.all([
-    fetchData("/translations/languages", supportedLanguages),
+    getLanguages(),
     fetchData("/orders", fallbackOrders),
     fetchData("/restaurants/rst_bistro_01/menu?language=ar", fallbackMenu)
   ]);
@@ -158,10 +158,29 @@ export async function getPublicPage(language: string) {
   });
 }
 
+export async function getLanguages(): Promise<SupportedLanguage[]> {
+  return fetchData("/translations/languages", supportedLanguages);
+}
+
 export async function getRawPublicPage() {
   return fetchData("/translations/public-page/raw", fallbackRawPublicPage);
 }
 
 export function languageLabel(language: string) {
   return supportedLanguages.find((item) => item.code === language)?.nativeName ?? language;
+}
+export async function getUiTranslations(language: string) {
+  return fetchData<Record<string, string>>(`/translations/translations/${language}`, {});
+}
+
+export async function getIngredientTaxonomy(language: string) {
+  return fetchData(`/translations/ingredients/${language}`, []);
+}
+
+export async function getModifierTaxonomy(language: string) {
+  return fetchData(`/translations/modifiers/${language}`, []);
+}
+
+export async function getAllergenTaxonomy(language: string) {
+  return fetchData(`/translations/allergens/${language}`, []);
 }

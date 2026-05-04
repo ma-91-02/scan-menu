@@ -30,7 +30,7 @@ interface RegistrationFormProps {
   restaurantLabel: string;
 }
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const languageStorageKey = "scanmenu-language";
 const sessionStorageKey = "scanmenu-session";
 
@@ -158,6 +158,7 @@ export function RegistrationForm({
   restaurantLabel
 }: RegistrationFormProps) {
   const [status, setStatus] = useState("");
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
   async function submitRegistration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -176,7 +177,10 @@ export function RegistrationForm({
         email: formData.get("email"),
         password: formData.get("password"),
         confirmPassword: formData.get("confirmPassword"),
-        preferredLanguage
+        preferredLanguage,
+        termsAccepted: acceptedPolicies,
+        privacyAccepted: acceptedPolicies,
+        consentAt: new Date().toISOString()
       })
     });
 
@@ -234,6 +238,15 @@ export function RegistrationForm({
           <input name="confirmPassword" type="password" autoComplete="new-password" required />
         </label>
       </div>
+      <label className="registration-consent-row">
+        <input
+          type="checkbox"
+          checked={acceptedPolicies}
+          onChange={(event) => setAcceptedPolicies(event.target.checked)}
+          required
+        />
+        I agree to the Terms of Use and Privacy Policy
+      </label>
       <button className="public-button primary wide" type="submit">
         {restaurantLabel}
       </button>
