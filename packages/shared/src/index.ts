@@ -268,3 +268,4 @@ function cleanLegacyFallbackMarker(value: string) {
   return value.replace(/^\[[a-z]{2}\]\s+/i, "");
 }
 export * from "./translation-catalog.js";
+export * from "./translation-coverage-validator.js";

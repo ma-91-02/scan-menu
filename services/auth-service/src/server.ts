@@ -1,131 +1,50 @@
 import cors from "cors";
-import crypto from "node:crypto";
-import { promisify } from "node:util";
 import express from "express";
 import type { StaffRole, UserRole } from "@scanmenu/shared";
 import {
+  createRestaurantDb,
+  createRestaurantStaffDb,
   createSessionDb,
   createUserDb,
   deleteSessionDb,
+  deleteSessionsForUserDb,
+  findUserByPasswordResetTokenDb,
+  findUserByVerificationTokenDb,
   findUserDb,
+  getRestaurantStaffForUserDb,
   getSessionDb,
+  getStaffForRestaurantDb,
   getUsersDb,
   hasAuthDb,
   initAuthDatabase,
+  updateUserDb,
   type AuthSessionRecord,
-  type AuthUserRecord
+  type AuthUserRecord,
+  type RestaurantAuthRecord,
+  type RestaurantStaffRecord
 } from "./db.js";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
+import {
+  createEmailVerificationToken,
+  createId,
+  createPasswordResetToken,
+  createSessionToken,
+  hashEmailToken,
+  hashPassword,
+  hashToken,
+  verifyPassword
+} from "./security.js";
 
-interface DemoUser {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  phone?: string;
-  role: UserRole;
-  preferredLanguage: string;
-  restaurantId?: string;
-  restaurantName?: string;
-  permissions?: string[];
-  passwordHash?: string;
-  termsAccepted?: boolean;
-  privacyAccepted?: boolean;
-  consentAt?: string;
-}
-
-interface DemoSession {
-  id: string;
-  userId: string;
-  createdAt: string;
-  expiresAt: string;
-}
-
-const users: DemoUser[] = [
-  {
-    id: "usr_platform_owner",
-    name: "Mohamed",
-    username: "scanmenu-admin",
-    email: "owner@scanmenu.local",
-    role: "platform_owner",
-    preferredLanguage: "ar"
-  },
-  {
-    id: "usr_restaurant_owner",
-    name: "Anna Petrova",
-    username: "bistro-owner",
-    email: "owner@bistro.local",
-    role: "restaurant_owner",
-    preferredLanguage: "ru",
-    restaurantId: "rst_bistro_01",
-    restaurantName: "Bistro Aurora"
-  },
-  {
-    id: "usr_staff_kitchen",
-    name: "Ivan Kitchen",
-    username: "bistro-kitchen",
-    email: "kitchen@bistro.local",
-    role: "staff",
-    preferredLanguage: "ru",
-    restaurantId: "rst_bistro_01",
-    restaurantName: "Bistro Aurora",
-    permissions: ["orders:read", "orders:update", "kitchen:read"]
-  },
-  {
-    id: "usr_staff_cashier",
-    name: "Mira Cashier",
-    username: "bistro-cashier",
-    email: "cashier@bistro.local",
-    role: "staff",
-    preferredLanguage: "en",
-    restaurantId: "rst_bistro_01",
-    restaurantName: "Bistro Aurora",
-    permissions: ["orders:read", "payments:read", "cashier:write"]
-  },
-  {
-    id: "usr_customer",
-    name: "Omar Ali",
-    username: "omar-customer",
-    email: "customer@scanmenu.local",
-    role: "customer",
-    preferredLanguage: "ar"
-  },
-  {
-    id: "usr_delivery_partner",
-    name: "Delivery Partner",
-    username: "delivery-partner",
-    email: "driver@scanmenu.local",
-    role: "delivery_partner",
-    preferredLanguage: "ar",
-    permissions: ["delivery:read", "delivery:update"]
-  },
-  {
-    id: "usr_farmer_partner",
-    name: "Farm Partner",
-    username: "farm-partner",
-    email: "farmer@scanmenu.local",
-    role: "farmer_partner",
-    preferredLanguage: "ar",
-    permissions: ["supply:read", "supply:write"]
-  },
-  {
-    id: "usr_supplier_partner",
-    name: "Grocery Supplier",
-    username: "supplier-partner",
-    email: "supplier@scanmenu.local",
-    role: "supplier_partner",
-    preferredLanguage: "ar",
-    permissions: ["supply:read", "inventory:write"]
-  }
-];
-
-const sessions = new Map<string, DemoSession>();
-const restaurantRoles = ["owner", "manager", "cashier", "kitchen", "waiter", "viewer"] as const;
-type RestaurantRole = StaffRole;
+const port = Number(process.env.AUTH_SERVICE_PORT ?? 4101);
 const defaultDemoPassword = process.env.SCANMENU_DEMO_PASSWORD ?? "password";
-const tokenSecret = process.env.AUTH_TOKEN_SECRET ?? (process.env.NODE_ENV === "production" ? "" : "scanmenu-dev-secret");
-const scryptAsync = promisify(crypto.scrypt);
+const termsVersion = "1.0";
+const privacyVersion = "1.0";
+const verificationTtlMs = 1000 * 60 * 60 * 24;
+const passwordResetTtlMs = 1000 * 60 * 30;
+const sessionTtlMs = 1000 * 60 * 60 * 8;
+const restaurantRoles = ["owner", "manager", "cashier", "kitchen", "waiter", "viewer"] as const;
 
-const rolePermissions: Record<RestaurantRole, string[]> = {
+const rolePermissions: Record<StaffRole, string[]> = {
   owner: ["*"],
   manager: ["menu:write", "orders:read", "orders:update", "staff:write", "profile:write"],
   cashier: ["orders:read", "orders:update", "payments:write", "cashier:read"],
@@ -134,12 +53,16 @@ const rolePermissions: Record<RestaurantRole, string[]> = {
   viewer: ["orders:read"]
 };
 
-const port = Number(process.env.AUTH_SERVICE_PORT ?? 4101);
-const dbReady = prepareSeedUsers()
-  .then((seedUsers) => initAuthDatabase(seedUsers as AuthUserRecord[]))
+const users: AuthUserRecord[] = [];
+const restaurants: RestaurantAuthRecord[] = [];
+const restaurantStaff: RestaurantStaffRecord[] = [];
+const sessions = new Map<string, AuthSessionRecord>();
+
+const dbReady = prepareSeedData()
+  .then((seed) => initAuthDatabase(seed.users, seed.restaurants, seed.staff))
   .catch((error) => {
-  console.error("Auth database init failed; using in-memory fallback", error);
-});
+    console.error("Auth database init failed; using in-memory fallback", error);
+  });
 
 export function createApp() {
   const app = express();
@@ -153,403 +76,878 @@ export function createApp() {
 
   app.get("/users", async (_req, res) => {
     await dbReady;
-    res.json({ data: hasAuthDb() ? await getUsersDb() : users });
+    const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
+    res.json({ data: sourceUsers.map(toPublicUser) });
   });
 
   app.get("/permissions", (_req, res) => {
     res.json({ data: rolePermissions });
   });
 
-  app.get("/restaurants/:restaurantId/staff", async (req, res) => {
+  app.post("/register/customer", async (req, res) => {
     await dbReady;
-    const actor = await authenticateRequest(req);
-    if (!actor || !canManageStaff(actor, req.params.restaurantId)) {
-      res.status(403).json({ error: "Staff management permission is required" });
+    const input = normalizeCustomerRegistration(req.body);
+    const consentError = validateConsent(input);
+    if (consentError) {
+      res.status(400).json({ error: consentError });
       return;
     }
 
-    const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
-    res.json({
-      data: sourceUsers.filter((user) => user.restaurantId === req.params.restaurantId && isRestaurantRole(user.role))
+    if (!input.name || !input.email || !input.password) {
+      res.status(400).json({ error: "Name, email, and password are required" });
+      return;
+    }
+
+    if (await isIdentityTaken({ email: input.email, username: input.username })) {
+      res.status(409).json({ error: "Email or username is already registered" });
+      return;
+    }
+
+    const verificationToken = createEmailVerificationToken();
+    const user = await buildUser({
+      name: input.name,
+      username: input.username,
+      email: input.email,
+      phone: input.phone,
+      password: input.password,
+      role: "customer",
+      preferredLanguage: input.preferredLanguage,
+      acceptedTerms: input.acceptedTerms,
+      acceptedPrivacy: input.acceptedPrivacy,
+      verificationToken,
+      verificationExpiresAt: input.debugVerificationExpiresAt
+    });
+
+    await saveUser(user);
+    await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+
+    res.status(201).json({
+      data: {
+        user: toPublicUser(user),
+        requiresEmailVerification: true,
+        message: "Please verify your email before signing in.",
+        ...debugTokens({ emailVerificationToken: verificationToken })
+      }
     });
   });
 
-  app.post("/register/customer", async (req, res) => {
-  await dbReady;
-  const email = String(req.body.email ?? "customer@example.com").trim().toLowerCase();
-  const username = uniqueUsername(String(req.body.username ?? email.split("@")[0] ?? "customer"));
-  const phone = String(req.body.phone ?? "").trim();
-  const termsAccepted = Boolean(req.body.termsAccepted);
-  const privacyAccepted = Boolean(req.body.privacyAccepted);
-
-  if (!termsAccepted || !privacyAccepted) {
-    res.status(400).json({ error: "Terms of Use and Privacy Policy consent is required" });
-    return;
-  }
-
-  if (await isIdentityTaken({ email, phone, username })) {
-    res.status(409).json({ error: "Email, phone, or username is already registered" });
-    return;
-  }
-
-  const password = String(req.body.password ?? "");
-  const user: DemoUser = {
-    id: `usr_${Date.now()}`,
-    name: String(req.body.name ?? "Customer"),
-    username,
-    email,
-    phone,
-    role: "customer",
-    preferredLanguage: String(req.body.preferredLanguage ?? "en"),
-    passwordHash: await hashPassword(password || defaultDemoPassword),
-    termsAccepted,
-    privacyAccepted,
-    consentAt: normalizeConsentAt(req.body.consentAt)
-  };
-
-  if (hasAuthDb()) await createUserDb(user);
-  else users.push(user);
-  const session = await createSession(user.id);
-
-  res.status(201).json({
-    data: {
-      user,
-      session,
-      accessToken: session.id,
-      redirectTo: getRedirectForRole(user.role)
+  app.post("/register/restaurant-owner", async (req, res) => {
+    await dbReady;
+    const input = normalizeRestaurantOwnerRegistration(req.body);
+    const consentError = validateConsent(input);
+    if (consentError) {
+      res.status(400).json({ error: consentError });
+      return;
     }
-  });
-  });
 
-  app.post("/register/staff", async (req, res) => {
-  await dbReady;
-  const email = String(req.body.email ?? "staff@example.com").trim().toLowerCase();
-  const username = uniqueUsername(String(req.body.username ?? email.split("@")[0] ?? "staff"));
-  const requestedRole = String(req.body.role ?? "viewer");
-  const role = restaurantRoles.includes(requestedRole as RestaurantRole) ? (requestedRole as RestaurantRole) : "viewer";
-  const restaurantId = String(req.body.restaurantId ?? "rst_bistro_01");
-  const actor = await authenticateRequest(req);
-  if (!actor || !canManageStaff(actor, restaurantId)) {
-    res.status(403).json({ error: "Staff management permission is required" });
-    return;
-  }
+    if (!input.name || !input.email || !input.password || !input.restaurantName) {
+      res.status(400).json({ error: "Name, email, password, and restaurant name are required" });
+      return;
+    }
 
-  if (await isIdentityTaken({ email, username })) {
-    res.status(409).json({ error: "Email, phone, or username is already registered" });
-    return;
-  }
+    if (await isIdentityTaken({ email: input.email, username: input.username })) {
+      res.status(409).json({ error: "Email or username is already registered" });
+      return;
+    }
 
-  const password = String(req.body.password ?? "");
-  const user: DemoUser = {
-    id: `usr_${Date.now()}`,
-    name: String(req.body.name ?? "Staff Member"),
-    username,
-    email,
-    role,
-    preferredLanguage: String(req.body.preferredLanguage ?? "en"),
-    restaurantId,
-    restaurantName: String(req.body.restaurantName ?? "Bistro Aurora"),
-    permissions: rolePermissions[role],
-    passwordHash: await hashPassword(password || defaultDemoPassword)
-  };
+    const verificationToken = createEmailVerificationToken();
+    const restaurantId = createId("rst");
+    const user = await buildUser({
+      name: input.name,
+      username: input.username,
+      email: input.email,
+      phone: input.phone,
+      password: input.password,
+      role: "restaurant_owner",
+      preferredLanguage: input.preferredLanguage,
+      restaurantId,
+      restaurantName: input.restaurantName,
+      staffRole: "owner",
+      permissions: rolePermissions.owner,
+      acceptedTerms: input.acceptedTerms,
+      acceptedPrivacy: input.acceptedPrivacy,
+      verificationToken,
+      verificationExpiresAt: input.debugVerificationExpiresAt
+    });
+    const restaurant: RestaurantAuthRecord = {
+      id: restaurantId,
+      ownerId: user.id,
+      name: input.restaurantName,
+      slug: uniqueSlug(input.restaurantName),
+      operatingLanguage: input.preferredLanguage,
+      country: input.country,
+      city: input.city,
+      address: input.address,
+      phone: input.phone,
+      email: input.email,
+      planId: "basic"
+    };
+    const staff = buildStaffLink(restaurantId, user.id, "owner");
 
-  if (hasAuthDb()) await createUserDb(user);
-  else users.push(user);
-  res.status(201).json({ data: user });
+    await saveUser(user);
+    await saveRestaurant(restaurant);
+    await saveStaff(staff);
+    await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+
+    res.status(201).json({
+      data: {
+        user: toPublicUser(user),
+        restaurant,
+        staff,
+        requiresEmailVerification: true,
+        message: "Please verify your email before signing in.",
+        ...debugTokens({ emailVerificationToken: verificationToken })
+      }
+    });
   });
 
   app.post("/register/restaurant", async (req, res) => {
-  await dbReady;
-  const firstName = String(req.body.firstName ?? "").trim();
-  const lastName = String(req.body.lastName ?? "").trim();
-  const restaurantName = String(req.body.restaurantName ?? "").trim();
-  const phone = String(req.body.phone ?? "").trim();
-  const email = String(req.body.email ?? `${phone || "restaurant"}@scanmenu.local`).trim().toLowerCase();
-  const requestedUsername = String(req.body.username ?? "").trim();
-  const username = uniqueUsername(requestedUsername || restaurantName || email.split("@")[0] || "restaurant");
-  const password = String(req.body.password ?? "");
-  const confirmPassword = String(req.body.confirmPassword ?? "");
-  const termsAccepted = Boolean(req.body.termsAccepted);
-  const privacyAccepted = Boolean(req.body.privacyAccepted);
-
-  if (!firstName || !restaurantName || !phone || !password) {
-    res.status(400).json({ error: "Missing required restaurant registration fields" });
-    return;
-  }
-
-  if (!termsAccepted || !privacyAccepted) {
-    res.status(400).json({ error: "Terms of Use and Privacy Policy consent is required" });
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    res.status(400).json({ error: "Passwords do not match" });
-    return;
-  }
-
-  if (await isIdentityTaken({ email, phone, username })) {
-    res.status(409).json({ error: "Email, phone, or username is already registered" });
-    return;
-  }
-
-  const user: DemoUser = {
-    id: `usr_${Date.now()}`,
-    name: `${firstName} ${lastName}`.trim(),
-    username,
-    email,
-    phone,
-    role: "restaurant_owner",
-    preferredLanguage: String(req.body.preferredLanguage ?? "en"),
-    restaurantId: `rst_${Date.now()}`,
-    restaurantName,
-    passwordHash: await hashPassword(password),
-    termsAccepted,
-    privacyAccepted,
-    consentAt: normalizeConsentAt(req.body.consentAt)
-  };
-
-  if (hasAuthDb()) await createUserDb(user);
-  else users.push(user);
-  const session = await createSession(user.id);
-
-  res.status(201).json({
-    data: {
-      user,
-      session,
-      accessToken: session.id,
-      redirectTo: getRedirectForRole(user.role)
-    }
+    await dbReady;
+    const input = normalizeRestaurantOwnerRegistration({
+      ...req.body,
+      name: `${String(req.body.firstName ?? "").trim()} ${String(req.body.lastName ?? "").trim()}`.trim(),
+      acceptedTerms: req.body.acceptedTerms ?? req.body.termsAccepted,
+      acceptedPrivacy: req.body.acceptedPrivacy ?? req.body.privacyAccepted
+    });
+    await registerRestaurantOwner(input, res);
   });
+
+  app.post("/restaurants/:restaurantId/staff", async (req, res) => {
+    await dbReady;
+    const actor = await requireAuth(req, res);
+    if (!actor) return;
+
+    const restaurantId = req.params.restaurantId;
+    if (!requireStaffRole(actor, restaurantId, ["owner", "manager"], res)) return;
+
+    const input = normalizeStaffRegistration(req.body, restaurantId);
+    if (!input.name || !input.email) {
+      res.status(400).json({ error: "Name and email are required" });
+      return;
+    }
+
+    if (await isIdentityTaken({ email: input.email, username: input.username })) {
+      res.status(409).json({ error: "Email or username is already registered" });
+      return;
+    }
+
+    const verificationToken = createEmailVerificationToken();
+    const password = input.password || createPasswordResetToken();
+    const user = await buildUser({
+      name: input.name,
+      username: input.username,
+      email: input.email,
+      phone: input.phone,
+      password,
+      role: "staff",
+      preferredLanguage: input.preferredLanguage,
+      restaurantId,
+      restaurantName: actor.restaurantName,
+      staffRole: input.staffRole,
+      permissions: rolePermissions[input.staffRole],
+      acceptedTerms: true,
+      acceptedPrivacy: true,
+      verificationToken
+    });
+    const staff = buildStaffLink(restaurantId, user.id, input.staffRole);
+
+    await saveUser(user);
+    await saveStaff(staff);
+    await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+
+    res.status(201).json({
+      data: {
+        user: toPublicUser(user),
+        staff,
+        temporaryPasswordIssued: !input.password,
+        ...debugTokens({ emailVerificationToken: verificationToken })
+      }
+    });
+  });
+
+  app.post("/register/staff", async (req, res) => {
+    await dbReady;
+    const actor = await requireAuth(req, res);
+    if (!actor) return;
+
+    const restaurantId = String(req.body.restaurantId ?? "");
+    if (!requireStaffRole(actor, restaurantId, ["owner", "manager"], res)) return;
+    await registerStaff(normalizeStaffRegistration(req.body, restaurantId), actor, restaurantId, res);
+  });
+
+  app.get("/restaurants/:restaurantId/staff", async (req, res) => {
+    await dbReady;
+    const actor = await requireAuth(req, res);
+    if (!actor) return;
+    if (!requireRestaurantAccess(actor, req.params.restaurantId, res)) return;
+    if (!requirePermission(actor, "staff:write", res) && actor.staffRole !== "owner") return;
+
+    const staffUsers = hasAuthDb()
+      ? await getStaffForRestaurantDb(req.params.restaurantId)
+      : users.filter((user) => user.restaurantId === req.params.restaurantId && (user.role === "staff" || user.role === "restaurant_owner"));
+    res.json({ data: staffUsers.map(toPublicUser) });
   });
 
   app.post("/login", async (req, res) => {
-  await dbReady;
-  const identifier = String(req.body.identifier ?? "").trim().toLowerCase();
+    await dbReady;
+    const identifier = String(req.body.identifier ?? req.body.email ?? "").trim().toLowerCase();
+    const password = String(req.body.password ?? "");
 
-  if (!identifier || !String(req.body.password ?? "")) {
-    res.status(400).json({ error: "Email, username, or phone and password are required" });
-    return;
-  }
-
-  const password = String(req.body.password ?? "");
-  const user = await findUserByIdentifier(identifier);
-
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    res.status(401).json({ error: "Invalid login credentials" });
-    return;
-  }
-  const session = await createSession(user.id);
-
-  res.json({
-    data: {
-      user,
-      session,
-      accessToken: session.id,
-      redirectTo: getRedirectForRole(user.role)
+    if (!identifier || !password) {
+      res.status(400).json({ error: "Email, username, or phone and password are required" });
+      return;
     }
+
+    const user = await findUserByIdentifier(identifier);
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      res.status(401).json({ error: "Invalid login credentials" });
+      return;
+    }
+
+    if (!user.emailVerified) {
+      res.status(403).json({ error: "Email verification is required before login" });
+      return;
+    }
+
+    const session = await createSession(user.id);
+    res.json({
+      data: {
+        user: toPublicUser(user),
+        session: toPublicSession(session),
+        accessToken: session.id,
+        redirectTo: getRedirectForRole(user)
+      }
+    });
   });
+
+  app.get("/verify-email", async (req, res) => {
+    await dbReady;
+    const token = String(req.query.token ?? "");
+    const user = token ? await findUserByVerificationToken(token) : undefined;
+
+    if (!user || !user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt).getTime() < Date.now()) {
+      res.status(400).json({ error: "Verification link is invalid or expired" });
+      return;
+    }
+
+    const nextUser: AuthUserRecord = {
+      ...user,
+      emailVerified: true,
+      emailVerifiedAt: new Date().toISOString(),
+      emailVerificationTokenHash: undefined,
+      emailVerificationExpiresAt: undefined
+    };
+    await updateUser(nextUser);
+
+    res.json({ data: { ok: true, message: "Email verified. You can sign in now." } });
+  });
+
+  app.post("/resend-verification", async (req, res) => {
+    await dbReady;
+    const email = normalizeEmail(req.body.email);
+    const user = email ? await findUserByIdentifier(email) : undefined;
+
+    if (user && !user.emailVerified) {
+      const verificationToken = createEmailVerificationToken();
+      await updateUser({
+        ...user,
+        emailVerificationTokenHash: hashEmailToken(verificationToken),
+        emailVerificationExpiresAt: expiresIn(verificationTtlMs)
+      });
+      await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+      res.json({ data: { ok: true, ...debugTokens({ emailVerificationToken: verificationToken }) } });
+      return;
+    }
+
+    res.json({ data: { ok: true } });
+  });
+
+  app.post("/forgot-password", async (req, res) => {
+    await dbReady;
+    const email = normalizeEmail(req.body.email);
+    const user = email ? await findUserByIdentifier(email) : undefined;
+
+    if (user) {
+      const resetToken = createPasswordResetToken();
+      await updateUser({
+        ...user,
+        passwordResetTokenHash: hashToken(resetToken),
+        passwordResetExpiresAt: expiresIn(passwordResetTtlMs)
+      });
+      await sendPasswordResetEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: resetToken });
+      res.json({ data: { ok: true, ...debugTokens({ passwordResetToken: resetToken }) } });
+      return;
+    }
+
+    res.json({ data: { ok: true } });
+  });
+
+  app.post("/reset-password", async (req, res) => {
+    await dbReady;
+    const token = String(req.body.token ?? "");
+    const newPassword = String(req.body.newPassword ?? "");
+    const user = token ? await findUserByPasswordResetToken(token) : undefined;
+
+    if (!newPassword || newPassword.length < 8) {
+      res.status(400).json({ error: "New password must be at least 8 characters" });
+      return;
+    }
+
+    if (!user || !user.passwordResetExpiresAt || new Date(user.passwordResetExpiresAt).getTime() < Date.now()) {
+      res.status(400).json({ error: "Password reset link is invalid or expired" });
+      return;
+    }
+
+    await updateUser({
+      ...user,
+      passwordHash: await hashPassword(newPassword),
+      passwordResetTokenHash: undefined,
+      passwordResetExpiresAt: undefined
+    });
+    await deleteSessionsForUser(user.id);
+
+    res.json({ data: { ok: true, message: "Password updated. Please sign in again." } });
   });
 
   app.get("/session/:sessionId", async (req, res) => {
-  await dbReady;
-  if (!verifySessionToken(req.params.sessionId)) {
-    res.status(401).json({ error: "Invalid session token" });
-    return;
-  }
-  const session = hasAuthDb() ? await getSessionDb(req.params.sessionId) : sessions.get(req.params.sessionId);
+    await dbReady;
+    const session = hasAuthDb() ? await getSessionDb(req.params.sessionId) : sessions.get(hashToken(req.params.sessionId));
 
-  if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
-    if (session) {
-      if (hasAuthDb()) await deleteSessionDb(session.id);
-      else sessions.delete(session.id);
+    if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
+      if (session) await deleteSession(req.params.sessionId);
+      res.status(401).json({ error: "Session expired or not found" });
+      return;
     }
 
-    res.status(401).json({ error: "Session expired or not found" });
-    return;
-  }
-
-  const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
-  const user = sourceUsers.find((item) => item.id === session.userId);
-
-  if (!user) {
-    if (hasAuthDb()) await deleteSessionDb(session.id);
-    else sessions.delete(session.id);
-    res.status(401).json({ error: "Session user not found" });
-    return;
-  }
-
-  res.json({
-    data: {
-      session,
-      user,
-      redirectTo: getRedirectForRole(user.role)
+    const user = await findUserById(session.userId);
+    if (!user) {
+      await deleteSession(req.params.sessionId);
+      res.status(401).json({ error: "Session user not found" });
+      return;
     }
-  });
+
+    res.json({
+      data: {
+        session: toPublicSession(session),
+        user: toPublicUser(user),
+        redirectTo: getRedirectForRole(user)
+      }
+    });
   });
 
   app.post("/logout", async (req, res) => {
-  await dbReady;
-  const sessionId = String(req.body.sessionId ?? "");
-
-  if (sessionId) {
-    if (hasAuthDb()) await deleteSessionDb(sessionId);
-    else sessions.delete(sessionId);
-  }
-
-  res.json({ data: { ok: true } });
+    await dbReady;
+    const sessionId = String(req.body.sessionId ?? "");
+    if (sessionId) await deleteSession(sessionId);
+    res.json({ data: { ok: true } });
   });
 
   return app;
 }
 
-async function authenticateRequest(req: express.Request) {
-  const sessionId = String(req.header("x-session-id") ?? req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? "");
-  if (!sessionId || !verifySessionToken(sessionId)) return undefined;
+async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaurantOwnerRegistration>, res: express.Response) {
+  const consentError = validateConsent(input);
+  if (consentError) {
+    res.status(400).json({ error: consentError });
+    return;
+  }
 
-  const session = hasAuthDb() ? await getSessionDb(sessionId) : sessions.get(sessionId);
-  if (!session || new Date(session.expiresAt).getTime() < Date.now()) return undefined;
+  if (!input.name || !input.email || !input.password || !input.restaurantName) {
+    res.status(400).json({ error: "Name, email, password, and restaurant name are required" });
+    return;
+  }
 
-  const sourceUsers = hasAuthDb() ? await getUsersDb() : users;
-  return sourceUsers.find((user) => user.id === session.userId);
+  if (await isIdentityTaken({ email: input.email, username: input.username })) {
+    res.status(409).json({ error: "Email or username is already registered" });
+    return;
+  }
+
+  const verificationToken = createEmailVerificationToken();
+  const restaurantId = createId("rst");
+  const user = await buildUser({
+    name: input.name,
+    username: input.username,
+    email: input.email,
+    phone: input.phone,
+    password: input.password,
+    role: "restaurant_owner",
+    preferredLanguage: input.preferredLanguage,
+    restaurantId,
+    restaurantName: input.restaurantName,
+    staffRole: "owner",
+    permissions: rolePermissions.owner,
+    acceptedTerms: input.acceptedTerms,
+    acceptedPrivacy: input.acceptedPrivacy,
+    verificationToken,
+    verificationExpiresAt: input.debugVerificationExpiresAt
+  });
+  const restaurant: RestaurantAuthRecord = {
+    id: restaurantId,
+    ownerId: user.id,
+    name: input.restaurantName,
+    slug: uniqueSlug(input.restaurantName),
+    operatingLanguage: input.preferredLanguage,
+    country: input.country,
+    city: input.city,
+    address: input.address,
+    phone: input.phone,
+    email: input.email,
+    planId: "basic"
+  };
+  const staff = buildStaffLink(restaurantId, user.id, "owner");
+
+  await saveUser(user);
+  await saveRestaurant(restaurant);
+  await saveStaff(staff);
+  await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+
+  res.status(201).json({
+    data: {
+      user: toPublicUser(user),
+      restaurant,
+      staff,
+      requiresEmailVerification: true,
+      message: "Please verify your email before signing in.",
+      ...debugTokens({ emailVerificationToken: verificationToken })
+    }
+  });
 }
 
-function canManageStaff(user: DemoUser | AuthUserRecord, restaurantId: string) {
-  if (user.role === "restaurant_owner" && user.restaurantId === restaurantId) return true;
-  if (user.role === "owner" && user.restaurantId === restaurantId) return true;
-  if (user.role === "manager" && user.restaurantId === restaurantId && user.permissions?.includes("staff:write")) return true;
+async function registerStaff(input: ReturnType<typeof normalizeStaffRegistration>, actor: AuthUserRecord, restaurantId: string, res: express.Response) {
+  if (!input.name || !input.email) {
+    res.status(400).json({ error: "Name and email are required" });
+    return;
+  }
+
+  if (await isIdentityTaken({ email: input.email, username: input.username })) {
+    res.status(409).json({ error: "Email or username is already registered" });
+    return;
+  }
+
+  const verificationToken = createEmailVerificationToken();
+  const password = input.password || createPasswordResetToken();
+  const user = await buildUser({
+    name: input.name,
+    username: input.username,
+    email: input.email,
+    phone: input.phone,
+    password,
+    role: "staff",
+    preferredLanguage: input.preferredLanguage,
+    restaurantId,
+    restaurantName: actor.restaurantName,
+    staffRole: input.staffRole,
+    permissions: rolePermissions[input.staffRole],
+    acceptedTerms: true,
+    acceptedPrivacy: true,
+    verificationToken
+  });
+  const staff = buildStaffLink(restaurantId, user.id, input.staffRole);
+
+  await saveUser(user);
+  await saveStaff(staff);
+  await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+
+  res.status(201).json({
+    data: {
+      user: toPublicUser(user),
+      staff,
+      temporaryPasswordIssued: !input.password,
+      ...debugTokens({ emailVerificationToken: verificationToken })
+    }
+  });
+}
+
+async function requireAuth(req: express.Request, res: express.Response) {
+  const token = String(req.header("x-session-id") ?? req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? "");
+  if (!token) {
+    res.status(401).json({ error: "Authentication is required" });
+    return undefined;
+  }
+
+  const session = hasAuthDb() ? await getSessionDb(token) : sessions.get(hashToken(token));
+  if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
+    res.status(401).json({ error: "Session expired or not found" });
+    return undefined;
+  }
+
+  const user = await findUserById(session.userId);
+  if (!user) {
+    res.status(401).json({ error: "Session user not found" });
+    return undefined;
+  }
+
+  return user;
+}
+
+function requireRestaurantAccess(user: AuthUserRecord, restaurantId: string, res: express.Response) {
+  if (user.role === "platform_owner") return true;
+  if (user.restaurantId === restaurantId) return true;
+  res.status(403).json({ error: "Restaurant access is denied" });
   return false;
 }
 
-function getRedirectForRole(role: UserRole) {
-  if (role === "platform_owner") {
-    return "/admin";
-  }
-
-  if (role === "restaurant_owner" || isRestaurantRole(role)) {
-    return "/restaurant";
-  }
-
-  if (role === "staff" || role === "accountant") {
-    return "/staff";
-  }
-
-  if (role === "delivery_partner" || role === "farmer_partner" || role === "supplier_partner") {
-    return "/partners";
-  }
-
-  if (role === "customer") {
-    return "/customer";
-  }
-
-  return "/";
+function requireStaffRole(user: AuthUserRecord, restaurantId: string, roles: StaffRole[], res: express.Response) {
+  if (!requireRestaurantAccess(user, restaurantId, res)) return false;
+  if (user.role === "restaurant_owner" && roles.includes("owner")) return true;
+  if (user.staffRole && roles.includes(user.staffRole)) return true;
+  res.status(403).json({ error: "Required staff role is missing" });
+  return false;
 }
 
-function isRestaurantRole(role: UserRole | string): role is RestaurantRole {
-  return restaurantRoles.includes(role as RestaurantRole);
+function requirePermission(user: AuthUserRecord, permission: string, res: express.Response) {
+  if (user.permissions?.includes("*") || user.permissions?.includes(permission)) return true;
+  res.status(403).json({ error: "Required permission is missing" });
+  return false;
 }
 
-async function findUserByIdentifier(identifier: string) {
-  if (hasAuthDb()) {
-    return findUserDb({ email: identifier, phone: identifier, username: identifier });
-  }
+async function buildUser(input: {
+  name: string;
+  username: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: UserRole;
+  preferredLanguage: string;
+  restaurantId?: string;
+  restaurantName?: string;
+  staffRole?: StaffRole;
+  permissions?: string[];
+  acceptedTerms: boolean;
+  acceptedPrivacy: boolean;
+  verificationToken: string;
+  verificationExpiresAt?: string;
+}): Promise<AuthUserRecord> {
+  const now = new Date().toISOString();
+  return {
+    id: createId("usr"),
+    name: input.name,
+    username: input.username,
+    email: input.email,
+    phone: input.phone,
+    passwordHash: await hashPassword(input.password),
+    role: input.role,
+    preferredLanguage: input.preferredLanguage,
+    emailVerified: false,
+    emailVerificationTokenHash: hashEmailToken(input.verificationToken),
+    emailVerificationExpiresAt: input.verificationExpiresAt ?? expiresIn(verificationTtlMs),
+    acceptedTerms: input.acceptedTerms,
+    acceptedTermsAt: now,
+    termsVersion,
+    acceptedPrivacy: input.acceptedPrivacy,
+    acceptedPrivacyAt: now,
+    privacyVersion,
+    restaurantId: input.restaurantId,
+    restaurantName: input.restaurantName,
+    staffRole: input.staffRole,
+    permissions: input.permissions ?? []
+  };
+}
 
-  return users.find((item) => {
-    return (
-      item.email.toLowerCase() === identifier ||
-      item.username.toLowerCase() === identifier ||
-      item.phone?.toLowerCase() === identifier
-    );
-  });
+function normalizeCustomerRegistration(body: Record<string, unknown>) {
+  const email = normalizeEmail(body.email);
+  return {
+    name: String(body.name ?? "").trim(),
+    email,
+    username: uniqueUsername(String(body.username ?? email.split("@")[0] ?? "customer")),
+    phone: cleanOptional(body.phone),
+    password: String(body.password ?? ""),
+    preferredLanguage: normalizeLanguage(body.preferredLanguage),
+    acceptedTerms: Boolean(body.acceptedTerms ?? body.termsAccepted),
+    acceptedPrivacy: Boolean(body.acceptedPrivacy ?? body.privacyAccepted),
+    debugVerificationExpiresAt: debugDate(body.debugVerificationExpiresAt)
+  };
+}
+
+function normalizeRestaurantOwnerRegistration(body: Record<string, unknown>) {
+  const email = normalizeEmail(body.email);
+  const name = String(body.name ?? `${String(body.firstName ?? "").trim()} ${String(body.lastName ?? "").trim()}`).trim();
+  const restaurantName = String(body.restaurantName ?? "").trim();
+  return {
+    name,
+    email,
+    username: uniqueUsername(String(body.username ?? email.split("@")[0] ?? restaurantName ?? "owner")),
+    phone: cleanOptional(body.phone),
+    password: String(body.password ?? ""),
+    restaurantName,
+    preferredLanguage: normalizeLanguage(body.preferredLanguage),
+    acceptedTerms: Boolean(body.acceptedTerms ?? body.termsAccepted),
+    acceptedPrivacy: Boolean(body.acceptedPrivacy ?? body.privacyAccepted),
+    debugVerificationExpiresAt: debugDate(body.debugVerificationExpiresAt),
+    country: cleanOptional(body.country),
+    city: cleanOptional(body.city),
+    address: cleanOptional(body.address)
+  };
+}
+
+function normalizeStaffRegistration(body: Record<string, unknown>, restaurantId: string) {
+  const email = normalizeEmail(body.email);
+  const requestedRole = String(body.staffRole ?? body.role ?? "viewer");
+  const staffRole = restaurantRoles.includes(requestedRole as StaffRole) ? requestedRole as StaffRole : "viewer";
+  return {
+    name: String(body.name ?? "").trim(),
+    email,
+    username: uniqueUsername(String(body.username ?? email.split("@")[0] ?? "staff")),
+    phone: cleanOptional(body.phone),
+    password: cleanOptional(body.password),
+    preferredLanguage: normalizeLanguage(body.preferredLanguage),
+    restaurantId,
+    staffRole
+  };
+}
+
+function validateConsent(input: { acceptedTerms: boolean; acceptedPrivacy: boolean }) {
+  if (!input.acceptedTerms || !input.acceptedPrivacy) {
+    return "Terms of Use and Privacy Policy consent is required";
+  }
+  return "";
 }
 
 async function createSession(userId: string) {
-  if (!tokenSecret) {
-    throw new Error("AUTH_TOKEN_SECRET is required in production");
-  }
+  const token = createSessionToken();
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 8);
-  const issuedAt = now.getTime();
-  const nonce = crypto.randomBytes(16).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub: userId, iat: issuedAt, exp: expiresAt.getTime(), nonce })).toString("base64url");
-  const signature = crypto.createHmac("sha256", tokenSecret).update(payload).digest("base64url");
   const session: AuthSessionRecord = {
-    id: `${payload}.${signature}`,
+    id: token,
     userId,
+    tokenHash: hashToken(token),
     createdAt: now.toISOString(),
-    expiresAt: expiresAt.toISOString()
+    expiresAt: new Date(now.getTime() + sessionTtlMs).toISOString()
   };
 
   if (hasAuthDb()) await createSessionDb(session);
-  else sessions.set(session.id, session);
+  else sessions.set(session.tokenHash, session);
   return session;
 }
 
-async function prepareSeedUsers() {
+async function prepareSeedData() {
+  if (users.length > 0) return { users, restaurants, staff: restaurantStaff };
+
   const passwordHash = await hashPassword(defaultDemoPassword);
-  users.forEach((user) => {
-    user.passwordHash ??= passwordHash;
-  });
-  return users;
+  const now = new Date().toISOString();
+  const seedUsers: AuthUserRecord[] = [
+    seedUser("usr_platform_owner", "Mohamed", "scanmenu-admin", "owner@scanmenu.local", "platform_owner", "ar", passwordHash, now),
+    seedUser("usr_restaurant_owner", "Anna Petrova", "bistro-owner", "owner@bistro.local", "restaurant_owner", "ru", passwordHash, now, {
+      restaurantId: "rst_bistro_01",
+      restaurantName: "Bistro Aurora",
+      staffRole: "owner",
+      permissions: rolePermissions.owner
+    }),
+    seedUser("usr_staff_kitchen", "Ivan Kitchen", "bistro-kitchen", "kitchen@bistro.local", "staff", "ru", passwordHash, now, {
+      restaurantId: "rst_bistro_01",
+      restaurantName: "Bistro Aurora",
+      staffRole: "kitchen",
+      permissions: rolePermissions.kitchen
+    }),
+    seedUser("usr_staff_cashier", "Mira Cashier", "bistro-cashier", "cashier@bistro.local", "staff", "en", passwordHash, now, {
+      restaurantId: "rst_bistro_01",
+      restaurantName: "Bistro Aurora",
+      staffRole: "cashier",
+      permissions: rolePermissions.cashier
+    }),
+    seedUser("usr_customer", "Omar Ali", "omar-customer", "customer@scanmenu.local", "customer", "ar", passwordHash, now)
+  ];
+  const seedRestaurants: RestaurantAuthRecord[] = [{
+    id: "rst_bistro_01",
+    ownerId: "usr_restaurant_owner",
+    name: "Bistro Aurora",
+    slug: "bistro-aurora",
+    operatingLanguage: "ru",
+    country: "Russia",
+    city: "Moscow",
+    address: "Tverskaya 10",
+    phone: "+7 900 100 20 30",
+    email: "owner@bistro.local",
+    planId: "premium"
+  }];
+  const seedStaff = [
+    buildStaffLink("rst_bistro_01", "usr_restaurant_owner", "owner"),
+    buildStaffLink("rst_bistro_01", "usr_staff_kitchen", "kitchen"),
+    buildStaffLink("rst_bistro_01", "usr_staff_cashier", "cashier")
+  ];
+
+  users.push(...seedUsers);
+  restaurants.push(...seedRestaurants);
+  restaurantStaff.push(...seedStaff);
+  return { users: seedUsers, restaurants: seedRestaurants, staff: seedStaff };
 }
 
-async function hashPassword(password: string) {
-  const salt = crypto.randomBytes(16).toString("base64url");
-  const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `scrypt:${salt}:${derivedKey.toString("base64url")}`;
+function seedUser(
+  id: string,
+  name: string,
+  username: string,
+  email: string,
+  role: UserRole,
+  preferredLanguage: string,
+  passwordHash: string,
+  now: string,
+  extra: Partial<AuthUserRecord> = {}
+): AuthUserRecord {
+  return {
+    id,
+    name,
+    username,
+    email,
+    role,
+    preferredLanguage,
+    passwordHash,
+    emailVerified: true,
+    emailVerifiedAt: now,
+    acceptedTerms: true,
+    acceptedTermsAt: now,
+    termsVersion,
+    acceptedPrivacy: true,
+    acceptedPrivacyAt: now,
+    privacyVersion,
+    permissions: [],
+    ...extra
+  };
 }
 
-async function verifyPassword(password: string, storedHash?: string) {
-  if (!storedHash) return false;
-  const [scheme, salt, expected] = storedHash.split(":");
-  if (scheme !== "scrypt" || !salt || !expected) return false;
-  const actual = (await scryptAsync(password, salt, 64)) as Buffer;
-  const expectedBuffer = Buffer.from(expected, "base64url");
-  return expectedBuffer.length === actual.length && crypto.timingSafeEqual(actual, expectedBuffer);
+function buildStaffLink(restaurantId: string, userId: string, staffRole: StaffRole): RestaurantStaffRecord {
+  return {
+    id: createId("stf"),
+    restaurantId,
+    userId,
+    staffRole,
+    permissions: rolePermissions[staffRole]
+  };
 }
 
-function verifySessionToken(token: string) {
-  if (!tokenSecret) return false;
-  const [payload, signature] = token.split(".");
-  if (!payload || !signature) return false;
-  const expected = crypto.createHmac("sha256", tokenSecret).update(payload).digest("base64url");
-  const provided = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (provided.length !== expectedBuffer.length || !crypto.timingSafeEqual(provided, expectedBuffer)) return false;
+async function saveUser(user: AuthUserRecord) {
+  if (hasAuthDb()) await createUserDb(user);
+  else users.push(user);
+}
 
-  try {
-    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { exp?: number };
-    return typeof data.exp === "number" && data.exp > Date.now();
-  } catch {
-    return false;
+async function updateUser(user: AuthUserRecord) {
+  if (hasAuthDb()) return updateUserDb(user);
+  const index = users.findIndex((item) => item.id === user.id);
+  if (index >= 0) users[index] = user;
+  return user;
+}
+
+async function saveRestaurant(restaurant: RestaurantAuthRecord) {
+  if (hasAuthDb()) await createRestaurantDb(restaurant);
+  else restaurants.push(restaurant);
+}
+
+async function saveStaff(staff: RestaurantStaffRecord) {
+  if (hasAuthDb()) await createRestaurantStaffDb(staff);
+  else restaurantStaff.push(staff);
+}
+
+async function findUserByIdentifier(identifier: string) {
+  if (hasAuthDb()) return findUserDb({ email: identifier, phone: identifier, username: identifier });
+  return users.find((item) => item.email === identifier || item.username === identifier || item.phone === identifier);
+}
+
+async function findUserById(id: string) {
+  if (hasAuthDb()) return findUserDb({ id });
+  return users.find((item) => item.id === id);
+}
+
+async function findUserByVerificationToken(token: string) {
+  if (hasAuthDb()) return findUserByVerificationTokenDb(token);
+  return users.find((user) => user.emailVerificationTokenHash === hashToken(token));
+}
+
+async function findUserByPasswordResetToken(token: string) {
+  if (hasAuthDb()) return findUserByPasswordResetTokenDb(token);
+  return users.find((user) => user.passwordResetTokenHash === hashToken(token));
+}
+
+async function deleteSession(token: string) {
+  if (hasAuthDb()) await deleteSessionDb(token);
+  else sessions.delete(hashToken(token));
+}
+
+async function deleteSessionsForUser(userId: string) {
+  if (hasAuthDb()) await deleteSessionsForUserDb(userId);
+  else {
+    for (const [tokenHash, session] of sessions.entries()) {
+      if (session.userId === userId) sessions.delete(tokenHash);
+    }
   }
 }
 
-function normalizeConsentAt(value: unknown) {
-  const date = value ? new Date(String(value)) : new Date();
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+async function isIdentityTaken(identity: { email: string; username: string; phone?: string }) {
+  if (hasAuthDb()) return Boolean(await findUserDb(identity));
+  return users.some((item) => item.email === identity.email || item.username === identity.username || (identity.phone ? item.phone === identity.phone : false));
 }
 
-async function isIdentityTaken(identity: { email: string; phone?: string; username: string }) {
-  if (hasAuthDb()) {
-    return Boolean(await findUserDb(identity));
-  }
+function toPublicUser(user: AuthUserRecord) {
+  const { passwordHash, emailVerificationTokenHash, passwordResetTokenHash, ...publicUser } = user;
+  return publicUser;
+}
 
-  return users.some((item) => {
-    return (
-      item.email.toLowerCase() === identity.email.toLowerCase() ||
-      item.username.toLowerCase() === identity.username.toLowerCase() ||
-      (identity.phone ? item.phone?.toLowerCase() === identity.phone.toLowerCase() : false)
-    );
-  });
+function toPublicSession(session: AuthSessionRecord) {
+  return {
+    id: session.id,
+    userId: session.userId,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt
+  };
+}
+
+function getRedirectForRole(user: AuthUserRecord) {
+  if (user.role === "platform_owner") return "/admin";
+  if (user.role === "restaurant_owner") return "/restaurant";
+  if (user.role === "staff") return roleRedirect(user.staffRole);
+  if (user.role === "accountant") return "/staff";
+  if (["delivery_partner", "farmer_partner", "supplier_partner"].includes(user.role)) return "/partners";
+  if (user.role === "customer") return "/customer";
+  return "/";
+}
+
+function roleRedirect(staffRole?: StaffRole) {
+  if (staffRole === "kitchen") return "/restaurant?tab=kitchen";
+  if (staffRole === "cashier") return "/restaurant?tab=cashier";
+  return "/staff";
+}
+
+function expiresIn(ms: number) {
+  return new Date(Date.now() + ms).toISOString();
+}
+
+function normalizeEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeLanguage(value: unknown) {
+  return String(value ?? "en").trim().toLowerCase() || "en";
+}
+
+function cleanOptional(value: unknown) {
+  const text = String(value ?? "").trim();
+  return text || undefined;
+}
+
+function debugDate(value: unknown) {
+  if (!process.env.SCANMENU_SKIP_LISTEN && process.env.NODE_ENV !== "test") return undefined;
+  const text = String(value ?? "").trim();
+  if (!text) return undefined;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
 function uniqueUsername(value: string) {
-  return value
+  const normalized = value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 40);
+  return normalized || `user-${Date.now()}`;
+}
+
+function uniqueSlug(value: string) {
+  return `${uniqueUsername(value)}-${Date.now()}`;
+}
+
+function debugTokens(tokens: Record<string, string>) {
+  if (process.env.SCANMENU_SKIP_LISTEN || process.env.NODE_ENV === "test") {
+    return { debug: tokens };
+  }
+  return {};
 }
 
 const app = createApp();

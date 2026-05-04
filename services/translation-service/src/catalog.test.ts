@@ -5,6 +5,7 @@ import {
   ingredientTaxonomy,
   modifierTaxonomy,
   scanMenuLanguages,
+  TranslationCoverageValidator,
   uiTranslations
 } from "@scanmenu/shared";
 
@@ -46,8 +47,11 @@ function assertCompleteTranslations(collection: Array<{ translations: Record<str
   }
 }
 
+const validator = new TranslationCoverageValidator(scanMenuLanguages);
+
 test("supported language list contains every required language", () => {
   assert.deepEqual(scanMenuLanguages.map((language) => language.code), requiredLanguageCodes);
+  assert.deepEqual(validator.validateLanguages(scanMenuLanguages), { ok: true, issues: [] });
 });
 
 test("rtl languages are marked correctly", () => {
@@ -57,16 +61,32 @@ test("rtl languages are marked correctly", () => {
 
 test("each UI translation key includes all required languages", () => {
   assertCompleteTranslations(uiTranslations);
+  assert.deepEqual(validator.validateDictionary(uiTranslations), { ok: true, issues: [] });
 });
 
 test("each ingredient includes all required languages", () => {
   assertCompleteTranslations(ingredientTaxonomy);
+  assert.deepEqual(validator.validateIngredientTaxonomy(ingredientTaxonomy), { ok: true, issues: [] });
 });
 
 test("each modifier includes all required languages", () => {
   assertCompleteTranslations(modifierTaxonomy);
+  assert.deepEqual(validator.validateModifierTaxonomy(modifierTaxonomy), { ok: true, issues: [] });
 });
 
 test("each allergen includes all required languages", () => {
   assertCompleteTranslations(allergenTaxonomy);
+  assert.deepEqual(validator.validateAllergenTaxonomy(allergenTaxonomy), { ok: true, issues: [] });
+});
+
+test("TranslationCoverageValidator fails when a required language is missing", () => {
+  const result = validator.validateDictionary([
+    {
+      key: "test.missing_language",
+      translations: { en: "Only English" } as any
+    }
+  ]);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((issue) => issue.message.includes("ar")));
 });

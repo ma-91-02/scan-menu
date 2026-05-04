@@ -1064,6 +1064,48 @@ h2 {
   font-weight: 800;
 }
 
+.auth-inline-link {
+  color: #163f36;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.consent-links {
+  display: inline-flex;
+  gap: 8px;
+  margin-inline-start: 8px;
+}
+
+.consent-links a {
+  color: #163f36;
+  font-weight: 900;
+}
+
+.legal-page,
+.auth-flow-page {
+  min-height: 100vh;
+  background: #eef5f1;
+  color: #10231f;
+  padding: clamp(24px, 4vw, 64px);
+}
+
+.legal-page article {
+  max-width: 880px;
+  margin: 32px auto;
+  display: grid;
+  gap: 18px;
+}
+
+.legal-page section {
+  border-top: 1px solid rgba(22, 63, 54, 0.14);
+  padding-top: 16px;
+}
+
+.auth-flow-page {
+  display: grid;
+  place-items: center;
+}
+
 .registration-section {
   margin: clamp(40px, 6vw, 90px) clamp(18px, 6vw, 120px);
 }

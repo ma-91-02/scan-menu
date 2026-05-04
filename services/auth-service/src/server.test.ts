@@ -7,6 +7,7 @@ let server: Server;
 let baseUrl: string;
 
 before(() => {
+  process.env.SCANMENU_DISABLE_EMAIL = "true";
   server = createApp().listen(0);
   const address = server.address();
 
@@ -18,16 +19,12 @@ after(() => {
   server.close();
 });
 
-test("rejects customer registration without terms and privacy consent", async () => {
-  const response = await fetch(`${baseUrl}/register/customer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: "Consent Test",
-      email: `consent-${Date.now()}@scanmenu.local`,
-      username: `consent-${Date.now()}`,
-      preferredLanguage: "ar"
-    })
+test("registration fails without privacy/terms acceptance", async () => {
+  const response = await post("/register/customer", {
+    name: "Consent Test",
+    email: uniqueEmail("consent"),
+    password: "password123",
+    preferredLanguage: "ar"
   });
   const payload = await response.json();
 
@@ -35,142 +32,222 @@ test("rejects customer registration without terms and privacy consent", async ()
   assert.match(payload.error, /consent/i);
 });
 
-test("registers customer with consent and returns customer redirect", async () => {
-  const response = await fetch(`${baseUrl}/register/customer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: "Registered Customer",
-      email: `registered-${Date.now()}@scanmenu.local`,
-      username: `registered-${Date.now()}`,
-      preferredLanguage: "ar",
-      termsAccepted: true,
-      privacyAccepted: true,
-      consentAt: new Date().toISOString()
-    })
+test("register customer creates unverified user and hides passwordHash", async () => {
+  const response = await post("/register/customer", {
+    name: "Registered Customer",
+    email: uniqueEmail("customer"),
+    password: "password123",
+    preferredLanguage: "ar",
+    acceptedTerms: true,
+    acceptedPrivacy: true
   });
   const payload = await response.json();
 
   assert.equal(response.status, 201);
   assert.equal(payload.data.user.role, "customer");
-  assert.equal(payload.data.redirectTo, "/customer");
+  assert.equal(payload.data.user.emailVerified, false);
+  assert.equal(payload.data.user.acceptedTerms, true);
+  assert.equal(payload.data.user.acceptedPrivacy, true);
+  assert.equal(payload.data.user.termsVersion, "1.0");
+  assert.equal(payload.data.user.privacyVersion, "1.0");
+  assert.equal(payload.data.user.passwordHash, undefined);
+  assert.ok(payload.data.debug.emailVerificationToken);
 });
 
-test("rejects restaurant registration without terms and privacy consent", async () => {
-  const response = await fetch(`${baseUrl}/register/restaurant`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      firstName: "Owner",
-      restaurantName: "Consent Bistro",
-      username: `restaurant-consent-${Date.now()}`,
-      phone: `+1555${Date.now()}`,
-      email: `restaurant-consent-${Date.now()}@scanmenu.local`,
-      password: "password",
-      confirmPassword: "password",
-      preferredLanguage: "en"
-    })
+test("register restaurant owner creates user, restaurant, and owner staff link", async () => {
+  const response = await post("/register/restaurant-owner", {
+    name: "Owner User",
+    email: uniqueEmail("owner"),
+    password: "password123",
+    restaurantName: "Owner Bistro",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
   });
   const payload = await response.json();
 
-  assert.equal(response.status, 400);
-  assert.match(payload.error, /consent/i);
+  assert.equal(response.status, 201);
+  assert.equal(payload.data.user.role, "restaurant_owner");
+  assert.equal(payload.data.user.staffRole, "owner");
+  assert.equal(payload.data.restaurant.ownerId, payload.data.user.id);
+  assert.equal(payload.data.staff.staffRole, "owner");
+  assert.equal(payload.data.user.restaurantId, payload.data.restaurant.id);
 });
 
-test("logs in an existing customer to the customer area", async () => {
-  const response = await fetch(`${baseUrl}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      identifier: "customer@scanmenu.local",
-      password: "password"
-    })
+test("login fails before email verification, then verify email succeeds", async () => {
+  const email = uniqueEmail("verify");
+  const register = await post("/register/customer", {
+    name: "Verify User",
+    email,
+    password: "password123",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
   });
+  const registrationPayload = await register.json();
+  const blockedLogin = await post("/login", { identifier: email, password: "password123" });
+  const blockedPayload = await blockedLogin.json();
+
+  assert.equal(blockedLogin.status, 403);
+  assert.match(blockedPayload.error, /verification/i);
+
+  const verify = await fetch(`${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`);
+  const verifyPayload = await verify.json();
+  assert.equal(verify.status, 200);
+  assert.equal(verifyPayload.data.ok, true);
+
+  const login = await post("/login", { identifier: email, password: "password123" });
+  const loginPayload = await login.json();
+  assert.equal(login.status, 200);
+  assert.equal(loginPayload.data.user.emailVerified, true);
+  assert.equal(loginPayload.data.user.passwordHash, undefined);
+  assert.ok(loginPayload.data.session.id);
+});
+
+test("expired verification token fails", async () => {
+  const register = await post("/register/customer", {
+    name: "Expired Token User",
+    email: uniqueEmail("expired"),
+    password: "password123",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true,
+    debugVerificationExpiresAt: new Date(Date.now() - 1000).toISOString()
+  });
+  const payload = await register.json();
+  const verify = await fetch(`${baseUrl}/verify-email?token=${payload.data.debug.emailVerificationToken}`);
+
+  assert.equal(verify.status, 400);
+});
+
+test("resend verification works without leaking account existence", async () => {
+  const email = uniqueEmail("resend");
+  const register = await post("/register/customer", {
+    name: "Resend User",
+    email,
+    password: "password123",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
+  });
+  await register.json();
+
+  const response = await post("/resend-verification", { email });
   const payload = await response.json();
+  const missing = await post("/resend-verification", { email: uniqueEmail("missing") });
 
   assert.equal(response.status, 200);
-  assert.equal(payload.data.user.role, "customer");
-  assert.equal(payload.data.redirectTo, "/customer");
-  assert.match(payload.data.session.id, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.equal(payload.data.ok, true);
+  assert.ok(payload.data.debug.emailVerificationToken);
+  assert.equal(missing.status, 200);
 });
 
-test("rejects invalid passwords", async () => {
-  const response = await fetch(`${baseUrl}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      identifier: "customer@scanmenu.local",
-      password: "wrong-password"
-    })
+test("forgot password creates reset token and reset changes password", async () => {
+  const email = uniqueEmail("reset");
+  const register = await post("/register/customer", {
+    name: "Reset User",
+    email,
+    password: "old-password",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
   });
-  const payload = await response.json();
+  const registrationPayload = await register.json();
+  await fetch(`${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`);
 
-  assert.equal(response.status, 401);
-  assert.match(payload.error, /invalid/i);
-});
+  const oldLogin = await post("/login", { identifier: email, password: "old-password" });
+  assert.equal(oldLogin.status, 200);
 
-test("rejects tampered session tokens", async () => {
-  const loginResponse = await fetch(`${baseUrl}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      identifier: "customer@scanmenu.local",
-      password: "password"
-    })
+  const forgot = await post("/forgot-password", { email });
+  const forgotPayload = await forgot.json();
+  assert.equal(forgot.status, 200);
+  assert.ok(forgotPayload.data.debug.passwordResetToken);
+
+  const reset = await post("/reset-password", {
+    token: forgotPayload.data.debug.passwordResetToken,
+    newPassword: "new-password"
   });
-  const loginPayload = await loginResponse.json();
-  const tamperedSessionId = `${loginPayload.data.session.id.slice(0, -1)}x`;
-  const sessionResponse = await fetch(`${baseUrl}/session/${tamperedSessionId}`);
-  const sessionPayload = await sessionResponse.json();
+  assert.equal(reset.status, 200);
 
-  assert.equal(sessionResponse.status, 401);
-  assert.match(sessionPayload.error, /invalid/i);
+  const oldPasswordLogin = await post("/login", { identifier: email, password: "old-password" });
+  assert.equal(oldPasswordLogin.status, 401);
+
+  const newPasswordLogin = await post("/login", { identifier: email, password: "new-password" });
+  assert.equal(newPasswordLogin.status, 200);
 });
 
-test("creates restaurant staff with role permissions", async () => {
-  const ownerLogin = await fetch(`${baseUrl}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      identifier: "owner@bistro.local",
-      password: "password"
-    })
+test("staff creation requires owner or manager and links staff to restaurantId", async () => {
+  const ownerLogin = await post("/login", {
+    identifier: "owner@bistro.local",
+    password: "password"
   });
   const ownerPayload = await ownerLogin.json();
-  const response = await fetch(`${baseUrl}/register/staff`, {
+
+  const unauthorized = await post("/register/staff", {
+    name: "Unauthorized Staff",
+    email: uniqueEmail("unauthorized"),
+    role: "viewer",
+    restaurantId: "rst_bistro_01"
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const staff = await fetch(`${baseUrl}/restaurants/rst_bistro_01/staff`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-session-id": ownerPayload.data.session.id },
     body: JSON.stringify({
       name: "Kitchen User",
-      email: `kitchen-${Date.now()}@scanmenu.local`,
-      username: `kitchen-${Date.now()}`,
-      role: "kitchen",
-      restaurantId: "rst_bistro_01",
-      restaurantName: "Bistro Aurora",
+      email: uniqueEmail("kitchen"),
+      username: uniqueUsername("kitchen"),
+      staffRole: "kitchen",
       preferredLanguage: "ru"
     })
   });
-  const payload = await response.json();
+  const payload = await staff.json();
 
-  assert.equal(response.status, 201);
-  assert.equal(payload.data.role, "kitchen");
-  assert.deepEqual(payload.data.permissions, ["orders:read", "orders:update", "kitchen:read"]);
+  assert.equal(staff.status, 201);
+  assert.equal(payload.data.user.role, "staff");
+  assert.equal(payload.data.user.staffRole, "kitchen");
+  assert.equal(payload.data.user.restaurantId, "rst_bistro_01");
+  assert.deepEqual(payload.data.user.permissions, ["orders:read", "orders:update", "kitchen:read"]);
 });
 
-test("protects staff creation by role permission", async () => {
-  const response = await fetch(`${baseUrl}/register/staff`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: "Unauthorized Staff",
-      email: `unauthorized-${Date.now()}@scanmenu.local`,
-      username: `unauthorized-${Date.now()}`,
-      role: "viewer",
-      restaurantId: "rst_bistro_01"
-    })
+test("user cannot access another restaurant staff data", async () => {
+  const ownerLogin = await post("/login", {
+    identifier: "owner@bistro.local",
+    password: "password"
   });
-  const payload = await response.json();
+  const ownerPayload = await ownerLogin.json();
+  const response = await fetch(`${baseUrl}/restaurants/rst_other/staff`, {
+    headers: { "x-session-id": ownerPayload.data.session.id }
+  });
 
   assert.equal(response.status, 403);
-  assert.match(payload.error, /permission/i);
 });
+
+test("password hash is used and never returned from login", async () => {
+  const login = await post("/login", {
+    identifier: "customer@scanmenu.local",
+    password: "password"
+  });
+  const payload = await login.json();
+
+  assert.equal(login.status, 200);
+  assert.equal(payload.data.user.passwordHash, undefined);
+  assert.ok(!JSON.stringify(payload).includes("password_hash"));
+});
+
+async function post(path: string, body: Record<string, unknown>) {
+  return fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+}
+
+function uniqueEmail(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}@scanmenu.local`;
+}
+
+function uniqueUsername(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}

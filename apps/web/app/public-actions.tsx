@@ -147,6 +147,9 @@ export function LoginForm({ loginLabel }: LoginFormProps) {
       <button className="public-button primary" type="button" onClick={login}>
         {loginLabel}
       </button>
+      <a className="auth-inline-link" href="/reset-password">
+        Forgot password?
+      </a>
       <p className="form-status">{status}</p>
     </form>
   );
@@ -164,23 +167,27 @@ export function RegistrationForm({
     event.preventDefault();
     setStatus("Creating account...");
     const formData = new FormData(event.currentTarget);
+    const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-    const response = await fetch(`${apiUrl}/auth/register/restaurant`, {
+    if (password !== confirmPassword) {
+      setStatus("Passwords do not match");
+      return;
+    }
+
+    const response = await fetch(`${apiUrl}/auth/register/restaurant-owner`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        firstName: formData.get("firstName"),
-        lastName: formData.get("lastName"),
+        name: `${String(formData.get("firstName") ?? "").trim()} ${String(formData.get("lastName") ?? "").trim()}`.trim(),
         restaurantName: formData.get("restaurantName"),
         username: formData.get("username"),
         phone: formData.get("phone"),
         email: formData.get("email"),
-        password: formData.get("password"),
-        confirmPassword: formData.get("confirmPassword"),
+        password,
         preferredLanguage,
-        termsAccepted: acceptedPolicies,
-        privacyAccepted: acceptedPolicies,
-        consentAt: new Date().toISOString()
+        acceptedTerms: acceptedPolicies,
+        acceptedPrivacy: acceptedPolicies
       })
     });
 
@@ -191,9 +198,7 @@ export function RegistrationForm({
       return;
     }
 
-    setStatus(`Account created for ${payload.data.user.restaurantName}. Redirecting...`);
-    localStorage.setItem(sessionStorageKey, payload.data.session.id);
-    window.location.href = payload.data.redirectTo;
+    setStatus("Account created. Please check your email to verify the account before signing in.");
   }
 
   return (
@@ -246,6 +251,10 @@ export function RegistrationForm({
           required
         />
         I agree to the Terms of Use and Privacy Policy
+        <span className="consent-links">
+          <a href={`/terms?lang=${preferredLanguage}`} target="_blank">Terms</a>
+          <a href={`/privacy?lang=${preferredLanguage}`} target="_blank">Privacy</a>
+        </span>
       </label>
       <button className="public-button primary wide" type="submit">
         {restaurantLabel}
