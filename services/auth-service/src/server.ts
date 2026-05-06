@@ -24,7 +24,7 @@ import {
   type RestaurantAuthRecord,
   type RestaurantStaffRecord
 } from "./db.js";
-import { getEmailConfigStatus, sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
+import { getEmailConfigStatus, trySendPasswordResetEmail, trySendVerificationEmail } from "./email.js";
 import {
   createEmailVerificationToken,
   createId,
@@ -130,12 +130,13 @@ export function createApp() {
     });
 
     await saveUser(user);
-    await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+    const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
     res.status(201).json({
       data: {
         user: toPublicUser(user),
         requiresEmailVerification: true,
+        emailDelivery,
         message: "Please verify your email before signing in.",
         ...debugTokens({ emailVerificationToken: verificationToken })
       }
@@ -198,7 +199,7 @@ export function createApp() {
     await saveUser(user);
     await saveRestaurant(restaurant);
     await saveStaff(staff);
-    await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+    const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
     res.status(201).json({
       data: {
@@ -206,6 +207,7 @@ export function createApp() {
         restaurant,
         staff,
         requiresEmailVerification: true,
+        emailDelivery,
         message: "Please verify your email before signing in.",
         ...debugTokens({ emailVerificationToken: verificationToken })
       }
@@ -264,13 +266,14 @@ export function createApp() {
 
     await saveUser(user);
     await saveStaff(staff);
-    await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+    const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
     res.status(201).json({
       data: {
         user: toPublicUser(user),
         staff,
         temporaryPasswordIssued: !input.password,
+        emailDelivery,
         ...debugTokens({ emailVerificationToken: verificationToken })
       }
     });
@@ -365,8 +368,8 @@ export function createApp() {
         emailVerificationTokenHash: hashEmailToken(verificationToken),
         emailVerificationExpiresAt: expiresIn(verificationTtlMs)
       });
-      await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
-      res.json({ data: { ok: true, ...debugTokens({ emailVerificationToken: verificationToken }) } });
+      const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+      res.json({ data: { ok: true, emailDelivery, ...debugTokens({ emailVerificationToken: verificationToken }) } });
       return;
     }
 
@@ -385,8 +388,8 @@ export function createApp() {
         passwordResetTokenHash: hashToken(resetToken),
         passwordResetExpiresAt: expiresIn(passwordResetTtlMs)
       });
-      await sendPasswordResetEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: resetToken });
-      res.json({ data: { ok: true, ...debugTokens({ passwordResetToken: resetToken }) } });
+      const emailDelivery = await trySendPasswordResetEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: resetToken });
+      res.json({ data: { ok: true, emailDelivery, ...debugTokens({ passwordResetToken: resetToken }) } });
       return;
     }
 
@@ -510,7 +513,7 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
   await saveUser(user);
   await saveRestaurant(restaurant);
   await saveStaff(staff);
-  await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+  const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
   res.status(201).json({
     data: {
@@ -518,6 +521,7 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
       restaurant,
       staff,
       requiresEmailVerification: true,
+      emailDelivery,
       message: "Please verify your email before signing in.",
       ...debugTokens({ emailVerificationToken: verificationToken })
     }
@@ -557,13 +561,14 @@ async function registerStaff(input: ReturnType<typeof normalizeStaffRegistration
 
   await saveUser(user);
   await saveStaff(staff);
-  await sendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+  const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
   res.status(201).json({
     data: {
       user: toPublicUser(user),
       staff,
       temporaryPasswordIssued: !input.password,
+      emailDelivery,
       ...debugTokens({ emailVerificationToken: verificationToken })
     }
   });

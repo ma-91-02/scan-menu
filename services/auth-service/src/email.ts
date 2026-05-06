@@ -14,6 +14,7 @@ const smtpSecure = String(process.env.SMTP_SECURE ?? "false").toLowerCase() === 
 const smtpUser = process.env.SMTP_USER;
 const smtpPassword = process.env.SMTP_PASSWORD;
 const smtpFrom = process.env.SMTP_FROM ?? "Scan Menu <noreply@scanmenu.local>";
+let lastEmailError: string | null = null;
 
 export async function sendVerificationEmail(input: EmailInput) {
   const url = `${publicWebUrl}/verify-email?token=${encodeURIComponent(input.token)}`;
@@ -22,6 +23,14 @@ export async function sendVerificationEmail(input: EmailInput) {
     subject: text(input.language, "Verify your Scan Menu email", "تأكيد بريدك في Scan Menu"),
     html: buildVerificationEmailHtml({ ...input, url })
   });
+}
+
+export async function trySendVerificationEmail(input: EmailInput) {
+  return trySend(() => sendVerificationEmail(input));
+}
+
+export async function trySendPasswordResetEmail(input: EmailInput) {
+  return trySend(() => sendPasswordResetEmail(input));
 }
 
 export function getEmailConfigStatus() {
@@ -35,7 +44,8 @@ export function getEmailConfigStatus() {
     configured: missing.length === 0,
     missing,
     host: smtpHost ?? null,
-    from: smtpFrom
+    from: smtpFrom,
+    lastError: lastEmailError
   };
 }
 
@@ -103,6 +113,7 @@ async function sendMail(message: { to: string; subject: string; html: string }) 
     subject: message.subject,
     html: message.html
   });
+  lastEmailError = null;
 }
 
 function emailLayout(input: { direction: "ltr" | "rtl"; title: string; body: string; action: string; url: string }) {
@@ -134,4 +145,15 @@ function escapeHtml(value: string) {
 
 function extractFirstUrl(html: string) {
   return html.match(/https?:\/\/[^"<\s]+/)?.[0];
+}
+
+async function trySend(send: () => Promise<void>) {
+  try {
+    await send();
+    return { delivered: true, error: null };
+  } catch (error) {
+    lastEmailError = error instanceof Error ? error.message : "Unknown email delivery error";
+    console.error("Auth email delivery failed", lastEmailError);
+    return { delivered: false, error: lastEmailError };
+  }
 }

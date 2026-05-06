@@ -51,6 +51,7 @@ test("register customer creates unverified user and hides passwordHash", async (
   assert.equal(payload.data.user.termsVersion, "1.0");
   assert.equal(payload.data.user.privacyVersion, "1.0");
   assert.equal(payload.data.user.passwordHash, undefined);
+  assert.equal(payload.data.emailDelivery.delivered, true);
   assert.ok(payload.data.debug.emailVerificationToken);
 });
 
