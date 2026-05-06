@@ -143,6 +143,33 @@ test("resend verification works without leaking account existence", async () => 
   assert.equal(missing.status, 200);
 });
 
+test("registering again with an unverified email resends verification instead of blocking", async () => {
+  const email = uniqueEmail("repeat-unverified");
+  const first = await post("/register/customer", {
+    name: "Repeat User",
+    email,
+    password: "password123",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
+  });
+  assert.equal(first.status, 201);
+
+  const second = await post("/register/customer", {
+    name: "Repeat User",
+    email,
+    password: "password123",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
+  });
+  const payload = await second.json();
+
+  assert.equal(second.status, 202);
+  assert.equal(payload.data.resent, true);
+  assert.equal(payload.data.requiresEmailVerification, true);
+});
+
 test("forgot password creates reset token and reset changes password", async () => {
   const email = uniqueEmail("reset");
   const register = await post("/register/customer", {

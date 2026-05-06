@@ -114,6 +114,22 @@ export function LoginForm({ loginLabel }: LoginFormProps) {
     window.location.href = payload.data.redirectTo;
   }
 
+  async function resendVerification() {
+    if (!identifier.trim()) {
+      setStatus("Enter your email first.");
+      return;
+    }
+
+    setStatus("Sending verification link...");
+    const response = await fetch(`${apiUrl}/auth/resend-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: identifier })
+    });
+    await response.json().catch(() => null);
+    setStatus(response.ok ? "If this email needs verification, a new link has been sent." : "Could not send verification link.");
+  }
+
   return (
     <form
       onSubmit={(event) => {
@@ -150,6 +166,9 @@ export function LoginForm({ loginLabel }: LoginFormProps) {
       <a className="auth-inline-link" href="/reset-password">
         Forgot password?
       </a>
+      <button className="auth-link-button" type="button" onClick={() => void resendVerification()}>
+        Resend verification email
+      </button>
       <p className="form-status">{status}</p>
     </form>
   );
@@ -198,7 +217,7 @@ export function RegistrationForm({
       return;
     }
 
-    setStatus("Account created. Please check your email to verify the account before signing in.");
+    setStatus(payload.data?.resent ? "A verification link was sent again. Please check your email." : "Account created. Please check your email to verify the account before signing in.");
   }
 
   return (

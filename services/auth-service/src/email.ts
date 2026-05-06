@@ -13,7 +13,8 @@ const smtpPort = Number(process.env.SMTP_PORT ?? 587);
 const smtpSecure = String(process.env.SMTP_SECURE ?? "false").toLowerCase() === "true";
 const smtpUser = process.env.SMTP_USER;
 const smtpPassword = process.env.SMTP_PASSWORD;
-const smtpFrom = process.env.SMTP_FROM ?? "Scan Menu <noreply@scanmenu.local>";
+const configuredSmtpFrom = process.env.SMTP_FROM ?? "Scan Menu <noreply@scanmenu.local>";
+const smtpFrom = normalizeSmtpFrom(configuredSmtpFrom, smtpUser);
 let lastEmailError: string | null = null;
 
 export async function sendVerificationEmail(input: EmailInput) {
@@ -145,6 +146,13 @@ function escapeHtml(value: string) {
 
 function extractFirstUrl(html: string) {
   return html.match(/https?:\/\/[^"<\s]+/)?.[0];
+}
+
+function normalizeSmtpFrom(value: string, user?: string) {
+  if (user && value.includes("your-domain.com")) {
+    return `Scan Menu <${user}>`;
+  }
+  return value;
 }
 
 async function trySend(send: () => Promise<void>) {

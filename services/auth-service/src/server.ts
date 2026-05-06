@@ -109,6 +109,12 @@ export function createApp() {
       return;
     }
 
+    const existingUser = await findUserByIdentifier(input.email);
+    if (existingUser && !existingUser.emailVerified) {
+      await resendVerificationForExistingUser(existingUser, res, 202);
+      return;
+    }
+
     if (await isIdentityTaken({ email: input.email, username: input.username })) {
       res.status(409).json({ error: "Email or username is already registered" });
       return;
@@ -154,6 +160,12 @@ export function createApp() {
 
     if (!input.name || !input.email || !input.password || !input.restaurantName) {
       res.status(400).json({ error: "Name, email, password, and restaurant name are required" });
+      return;
+    }
+
+    const existingUser = await findUserByIdentifier(input.email);
+    if (existingUser && !existingUser.emailVerified) {
+      await resendVerificationForExistingUser(existingUser, res, 202);
       return;
     }
 
@@ -362,14 +374,7 @@ export function createApp() {
     const user = email ? await findUserByIdentifier(email) : undefined;
 
     if (user && !user.emailVerified) {
-      const verificationToken = createEmailVerificationToken();
-      await updateUser({
-        ...user,
-        emailVerificationTokenHash: hashEmailToken(verificationToken),
-        emailVerificationExpiresAt: expiresIn(verificationTtlMs)
-      });
-      const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
-      res.json({ data: { ok: true, emailDelivery, ...debugTokens({ emailVerificationToken: verificationToken }) } });
+      await resendVerificationForExistingUser(user, res, 200);
       return;
     }
 
@@ -471,6 +476,12 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
     return;
   }
 
+  const existingUser = await findUserByIdentifier(input.email);
+  if (existingUser && !existingUser.emailVerified) {
+    await resendVerificationForExistingUser(existingUser, res, 202);
+    return;
+  }
+
   if (await isIdentityTaken({ email: input.email, username: input.username })) {
     res.status(409).json({ error: "Email or username is already registered" });
     return;
@@ -523,6 +534,32 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
       requiresEmailVerification: true,
       emailDelivery,
       message: "Please verify your email before signing in.",
+      ...debugTokens({ emailVerificationToken: verificationToken })
+    }
+  });
+}
+
+async function resendVerificationForExistingUser(user: AuthUserRecord, res: express.Response, statusCode: 200 | 202) {
+  const verificationToken = createEmailVerificationToken();
+  const nextUser = await updateUser({
+    ...user,
+    emailVerificationTokenHash: hashEmailToken(verificationToken),
+    emailVerificationExpiresAt: expiresIn(verificationTtlMs)
+  });
+  const emailDelivery = await trySendVerificationEmail({
+    to: nextUser.email,
+    language: nextUser.preferredLanguage,
+    name: nextUser.name,
+    token: verificationToken
+  });
+
+  res.status(statusCode).json({
+    data: {
+      ok: true,
+      resent: true,
+      requiresEmailVerification: true,
+      emailDelivery,
+      message: "A verification link was sent if this email is registered and unverified.",
       ...debugTokens({ emailVerificationToken: verificationToken })
     }
   });

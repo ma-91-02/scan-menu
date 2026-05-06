@@ -1070,6 +1070,18 @@ h2 {
   text-decoration: none;
 }
 
+.auth-link-button {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: #163f36;
+  font: inherit;
+  font-weight: 900;
+  padding: 0;
+  text-align: start;
+  cursor: pointer;
+}
+
 .consent-links {
   display: inline-flex;
   gap: 8px;
