@@ -24,7 +24,7 @@ import {
   type RestaurantAuthRecord,
   type RestaurantStaffRecord
 } from "./db.js";
-import { sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
+import { getEmailConfigStatus, sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
 import {
   createEmailVerificationToken,
   createId,
@@ -73,7 +73,16 @@ export function createApp() {
   app.use(express.json());
 
   app.get("/health", (_req, res) => {
-    res.json({ data: { service: "auth-service", status: "ok" } });
+    res.json({
+      data: {
+        service: "auth-service",
+        status: "ok",
+        database: hasAuthDb() ? "postgres" : "memory",
+        email: getEmailConfigStatus(),
+        publicWebUrl: process.env.PUBLIC_WEB_URL ?? "http://localhost:3000",
+        publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:4000"
+      }
+    });
   });
 
   app.get("/users", async (_req, res) => {

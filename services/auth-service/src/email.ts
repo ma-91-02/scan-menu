@@ -24,6 +24,21 @@ export async function sendVerificationEmail(input: EmailInput) {
   });
 }
 
+export function getEmailConfigStatus() {
+  const missing: string[] = [];
+  if (!smtpHost) missing.push("SMTP_HOST");
+  if (!smtpUser) missing.push("SMTP_USER");
+  if (!smtpPassword) missing.push("SMTP_PASSWORD");
+  if (!smtpFrom) missing.push("SMTP_FROM");
+
+  return {
+    configured: missing.length === 0,
+    missing,
+    host: smtpHost ?? null,
+    from: smtpFrom
+  };
+}
+
 export async function sendPasswordResetEmail(input: EmailInput) {
   const url = `${publicWebUrl}/reset-password?token=${encodeURIComponent(input.token)}`;
   await sendMail({

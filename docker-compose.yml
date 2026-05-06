@@ -7,6 +7,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - scanmenu_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scanmenu -d scanmenu"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -30,11 +36,13 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-Scan Menu <noreply@your-domain.com>}
-      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-https://scanmenu.your-ma.com}
-      PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.scanmenu.your-ma.com}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-${SERVICE_URL_WEB:-https://scanmenu.your-ma.com}}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   restaurant-service:
     build:
@@ -48,8 +56,10 @@ services:
       DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
       TRANSLATION_SERVICE_URL: http://translation-service:4104
     depends_on:
-      - postgres
-      - translation-service
+      postgres:
+        condition: service_healthy
+      translation-service:
+        condition: service_started
 
   order-service:
     build:
@@ -64,8 +74,10 @@ services:
       TRANSLATION_SERVICE_URL: http://translation-service:4104
       RESTAURANT_SERVICE_URL: http://restaurant-service:4102
     depends_on:
-      - postgres
-      - translation-service
+      postgres:
+        condition: service_healthy
+      translation-service:
+        condition: service_started
 
   translation-service:
     build:
@@ -107,13 +119,13 @@ services:
       context: .
       args:
         SERVICE_WORKSPACE: "@scanmenu/web"
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.scanmenu.your-ma.com}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
         WEB_PUBLIC_API_URL: http://api-gateway:4000
     command: npm run start -w @scanmenu/web
     environment:
       NODE_ENV: production
       WEB_PUBLIC_API_URL: http://api-gateway:4000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.scanmenu.your-ma.com}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
     depends_on:
       - api-gateway
     labels:
