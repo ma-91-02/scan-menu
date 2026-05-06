@@ -20,7 +20,6 @@ ARG SMTP_FROM
 ARG PUBLIC_WEB_URL
 ARG PUBLIC_API_URL
 ARG COOLIFY_BUILD_SECRETS_HASH
-ARG SERVICE_WORKSPACE
 ARG NEXT_PUBLIC_API_URL
 ARG WEB_PUBLIC_API_URL
 
@@ -38,7 +37,7 @@ COPY packages ./packages
 
 RUN npm ci --no-audit --no-fund
 RUN npm run build -w @scanmenu/shared
-RUN if [ -n "$SERVICE_WORKSPACE" ]; then npm run build -w "$SERVICE_WORKSPACE"; else npm run build; fi
+RUN npm run build --workspaces --if-present
 RUN npm prune --omit=dev --no-audit --no-fund && npm cache clean --force
 
 CMD ["npm", "run", "start", "-w", "@scanmenu/api-gateway"]

@@ -18,10 +18,7 @@ services:
     image: redis:7-alpine
 
   auth-service:
-    build:
-      context: .
-      args:
-        SERVICE_WORKSPACE: "@scanmenu/auth-service"
+    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
     command: npm run start -w @scanmenu/auth-service
     environment:
       NODE_ENV: production
@@ -35,7 +32,7 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-true}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-Scan Menu <noreply@your-domain.com>}
+      SMTP_FROM: ${SMTP_FROM:-Scan Menu <noreply@your-ma.com>}
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-${SERVICE_URL_WEB:-https://scanmenu.your-ma.com}}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
     depends_on:
@@ -45,10 +42,7 @@ services:
         condition: service_started
 
   restaurant-service:
-    build:
-      context: .
-      args:
-        SERVICE_WORKSPACE: "@scanmenu/restaurant-service"
+    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
     command: npm run start -w @scanmenu/restaurant-service
     environment:
       NODE_ENV: production
@@ -62,10 +56,7 @@ services:
         condition: service_started
 
   order-service:
-    build:
-      context: .
-      args:
-        SERVICE_WORKSPACE: "@scanmenu/order-service"
+    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
     command: npm run start -w @scanmenu/order-service
     environment:
       NODE_ENV: production
@@ -80,20 +71,19 @@ services:
         condition: service_started
 
   translation-service:
-    build:
-      context: .
-      args:
-        SERVICE_WORKSPACE: "@scanmenu/translation-service"
+    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
     command: npm run start -w @scanmenu/translation-service
     environment:
       NODE_ENV: production
       TRANSLATION_SERVICE_PORT: 4104
 
   api-gateway:
+    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
     build:
       context: .
       args:
-        SERVICE_WORKSPACE: "@scanmenu/api-gateway"
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
+        WEB_PUBLIC_API_URL: http://api-gateway:4000
     command: npm run start -w @scanmenu/api-gateway
     environment:
       NODE_ENV: production
@@ -115,12 +105,7 @@ services:
       - "traefik.http.services.scanmenu-api.loadbalancer.server.port=4000"
 
   web:
-    build:
-      context: .
-      args:
-        SERVICE_WORKSPACE: "@scanmenu/web"
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
-        WEB_PUBLIC_API_URL: http://api-gateway:4000
+    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
     command: npm run start -w @scanmenu/web
     environment:
       NODE_ENV: production
