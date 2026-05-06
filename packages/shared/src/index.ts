@@ -69,13 +69,14 @@ export interface MenuItem {
   description: LocalizedText;
   imageUrl?: string;
   price: number;
-  currency: "USD" | "EUR" | "RUB" | "SAR" | "AED";
+  currency: string;
   isAvailable: boolean;
 }
 
 export interface MenuCategory {
   id: string;
   restaurantId: string;
+  catalogKey?: string;
   name: LocalizedText;
 }
 
@@ -89,6 +90,8 @@ export interface Restaurant {
   id: string;
   name: string;
   operatingLanguage: LanguageCode | string;
+  currency?: string;
+  logoUrl?: string;
   supportedCustomerLanguages: Array<LanguageCode | string>;
   status: "draft" | "active" | "paused";
 }

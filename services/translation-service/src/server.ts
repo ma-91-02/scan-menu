@@ -3,6 +3,7 @@ import express from "express";
 import {
   allergenTaxonomy,
   ingredientTaxonomy,
+  menuSectionTaxonomy,
   modifierTaxonomy,
   pickCatalogTranslation,
   scanMenuLanguages,
@@ -701,6 +702,21 @@ app.get("/translations/:language", (req, res) => {
 
 app.get("/ingredients", (_req, res) => {
   res.json({ data: ingredientTaxonomy });
+});
+
+app.get("/sections", (_req, res) => {
+  res.json({ data: menuSectionTaxonomy });
+});
+
+app.get("/sections/:language", (req, res) => {
+  const language = String(req.params.language);
+  res.json({
+    data: menuSectionTaxonomy.map((item) => ({
+      id: item.id,
+      displayName: pickCatalogTranslation(item.translations, language),
+      translations: item.translations
+    }))
+  });
 });
 
 app.get("/ingredients/:language", (req, res) => {

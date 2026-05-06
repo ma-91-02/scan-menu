@@ -58,6 +58,11 @@ export interface AllergenTaxonomyItem {
   translations: CompleteTranslations;
 }
 
+export interface MenuSectionTaxonomyItem {
+  id: string;
+  translations: CompleteTranslations;
+}
+
 export type IngredientCategory =
   | "vegetables"
   | "herbs"
@@ -322,6 +327,72 @@ function allergen(id: string, en: string, partial: Partial<CompleteTranslations>
   return { id, translations: tx(en, partial) };
 }
 
+const faMenuSectionTranslations: Record<string, string> = {
+  hot_drinks: "نوشیدنی های گرم",
+  cold_drinks: "نوشیدنی های سرد",
+  juices: "آبمیوه ها",
+  smoothies: "اسموتی ها",
+  soft_drinks: "نوشابه ها",
+  water: "آب",
+  breakfast: "صبحانه",
+  appetizers: "پیش غذاها",
+  soups: "سوپ ها",
+  salads: "سالادها",
+  sandwiches: "ساندویچ ها",
+  burgers: "برگرها",
+  pizza: "پیتزا",
+  pasta: "پاستا",
+  grills: "گریل و کباب",
+  seafood: "غذاهای دریایی",
+  chicken: "غذاهای مرغ",
+  meat: "غذاهای گوشتی",
+  rice: "غذاهای برنجی",
+  oriental: "غذاهای شرقی",
+  turkish: "غذاهای ترکی",
+  italian: "غذاهای ایتالیایی",
+  desserts: "دسرها",
+  ice_cream: "بستنی",
+  kids_menu: "منوی کودکان",
+  sides: "غذاهای جانبی",
+  sauces: "سس ها",
+  specials: "پیشنهادهای سرآشپز"
+};
+
+function section(id: string, en: string, partial: Partial<CompleteTranslations> = {}): MenuSectionTaxonomyItem {
+  return { id, translations: tx(en, { fa: faMenuSectionTranslations[id], ...partial }) };
+}
+
+export const menuSectionTaxonomy: MenuSectionTaxonomyItem[] = [
+  section("hot_drinks", "Hot drinks", { ar: "مشروبات ساخنة", ru: "Горячие напитки", tr: "Sıcak içecekler", fr: "Boissons chaudes", es: "Bebidas calientes", de: "Heiße Getränke" }),
+  section("cold_drinks", "Cold drinks", { ar: "مشروبات باردة", ru: "Холодные напитки", tr: "Soğuk içecekler", fr: "Boissons froides", es: "Bebidas frías", de: "Kalte Getränke" }),
+  section("juices", "Juices", { ar: "عصائر", ru: "Соки", tr: "Meyve suları", fr: "Jus", es: "Jugos", de: "Säfte" }),
+  section("smoothies", "Smoothies", { ar: "سموذي", ru: "Смузи", tr: "Smoothie", fr: "Smoothies", es: "Batidos", de: "Smoothies" }),
+  section("soft_drinks", "Soft drinks", { ar: "مشروبات غازية", ru: "Газированные напитки", tr: "Gazlı içecekler", fr: "Sodas", es: "Refrescos", de: "Softdrinks" }),
+  section("water", "Water", { ar: "مياه", ru: "Вода", tr: "Su", fr: "Eau", es: "Agua", de: "Wasser" }),
+  section("breakfast", "Breakfast", { ar: "فطور", ru: "Завтрак", tr: "Kahvaltı", fr: "Petit-déjeuner", es: "Desayuno", de: "Frühstück" }),
+  section("appetizers", "Appetizers", { ar: "مقبلات", ru: "Закуски", tr: "Başlangıçlar", fr: "Entrées", es: "Entrantes", de: "Vorspeisen" }),
+  section("soups", "Soups", { ar: "شوربات", ru: "Супы", tr: "Çorbalar", fr: "Soupes", es: "Sopas", de: "Suppen" }),
+  section("salads", "Salads", { ar: "سلطات", ru: "Салаты", tr: "Salatalar", fr: "Salades", es: "Ensaladas", de: "Salate" }),
+  section("sandwiches", "Sandwiches", { ar: "سندويشات", ru: "Сэндвичи", tr: "Sandviçler", fr: "Sandwichs", es: "Sándwiches", de: "Sandwiches" }),
+  section("burgers", "Burgers", { ar: "برغر", ru: "Бургеры", tr: "Burgerler", fr: "Burgers", es: "Hamburguesas", de: "Burger" }),
+  section("pizza", "Pizza", { ar: "بيتزا", ru: "Пицца", tr: "Pizza", fr: "Pizza", es: "Pizza", de: "Pizza" }),
+  section("pasta", "Pasta", { ar: "باستا", ru: "Паста", tr: "Makarna", fr: "Pâtes", es: "Pasta", de: "Pasta" }),
+  section("grills", "Grills", { ar: "مشويات", ru: "Гриль", tr: "Izgaralar", fr: "Grillades", es: "Parrilla", de: "Grillgerichte" }),
+  section("seafood", "Seafood", { ar: "مأكولات بحرية", ru: "Морепродукты", tr: "Deniz ürünleri", fr: "Fruits de mer", es: "Mariscos", de: "Meeresfrüchte" }),
+  section("chicken", "Chicken dishes", { ar: "أطباق دجاج", ru: "Блюда из курицы", tr: "Tavuk yemekleri", fr: "Plats au poulet", es: "Platos de pollo", de: "Hähnchengerichte" }),
+  section("meat", "Meat dishes", { ar: "أطباق لحوم", ru: "Мясные блюда", tr: "Et yemekleri", fr: "Plats de viande", es: "Platos de carne", de: "Fleischgerichte" }),
+  section("rice", "Rice dishes", { ar: "أطباق أرز", ru: "Блюда с рисом", tr: "Pilav yemekleri", fr: "Plats de riz", es: "Platos de arroz", de: "Reisgerichte" }),
+  section("oriental", "Oriental dishes", { ar: "أطباق شرقية", ru: "Восточные блюда", tr: "Doğu yemekleri", fr: "Plats orientaux", es: "Platos orientales", de: "Orientalische Gerichte" }),
+  section("turkish", "Turkish dishes", { ar: "أطباق تركية", ru: "Турецкие блюда", tr: "Türk yemekleri", fr: "Plats turcs", es: "Platos turcos", de: "Türkische Gerichte" }),
+  section("italian", "Italian dishes", { ar: "أطباق إيطالية", ru: "Итальянские блюда", tr: "İtalyan yemekleri", fr: "Plats italiens", es: "Platos italianos", de: "Italienische Gerichte" }),
+  section("desserts", "Desserts", { ar: "حلويات", ru: "Десерты", tr: "Tatlılar", fr: "Desserts", es: "Postres", de: "Desserts" }),
+  section("ice_cream", "Ice cream", { ar: "آيس كريم", ru: "Мороженое", tr: "Dondurma", fr: "Glaces", es: "Helados", de: "Eiscreme" }),
+  section("kids_menu", "Kids menu", { ar: "منيو الأطفال", ru: "Детское меню", tr: "Çocuk menüsü", fr: "Menu enfants", es: "Menú infantil", de: "Kindermenü" }),
+  section("sides", "Side dishes", { ar: "أطباق جانبية", ru: "Гарниры", tr: "Yan ürünler", fr: "Accompagnements", es: "Guarniciones", de: "Beilagen" }),
+  section("sauces", "Sauces", { ar: "صلصات", ru: "Соусы", tr: "Soslar", fr: "Sauces", es: "Salsas", de: "Saucen" }),
+  section("specials", "Chef specials", { ar: "أطباق الشيف", ru: "Фирменные блюда", tr: "Şefin önerileri", fr: "Spécialités du chef", es: "Especiales del chef", de: "Empfehlungen des Küchenchefs" })
+];
+
 export const uiTranslations: TranslationCatalogItem[] = [
   { key: "restaurant.menu", translations: tx("Menu", { ar: "المنيو", ru: "Меню", tr: "Menü", fr: "Menu", es: "Menú", de: "Speisekarte" }) },
   { key: "restaurant.add_section", translations: tx("Add section", { ar: "إضافة قسم", ru: "Добавить раздел", tr: "Bölüm ekle", fr: "Ajouter une section", es: "Añadir sección", de: "Bereich hinzufügen" }) },
@@ -332,8 +403,21 @@ export const uiTranslations: TranslationCatalogItem[] = [
   { key: "restaurant.price", translations: tx("Price", { ar: "السعر", ru: "Цена", tr: "Fiyat", fr: "Prix", es: "Precio", de: "Preis" }) },
   { key: "restaurant.ingredients", translations: tx("Ingredients", { ar: "المكونات", ru: "Ингредиенты", tr: "Malzemeler", fr: "Ingrédients", es: "Ingredientes", de: "Zutaten" }) },
   { key: "restaurant.section", translations: tx("Section", { ar: "القسم", ru: "Раздел", tr: "Bölüm", fr: "Section", es: "Sección", de: "Bereich" }) },
+  { key: "restaurant.currency", translations: tx("Restaurant currency", { ar: "عملة المطعم", ru: "Валюта ресторана", tr: "Restoran para birimi", fr: "Devise du restaurant", es: "Moneda del restaurante", de: "Restaurantwährung", fa: "واحد پول رستوران" }) },
+  { key: "restaurant.currency_search", translations: tx("Search currency", { ar: "ابحث عن العملة", ru: "Найти валюту", tr: "Para birimi ara", fr: "Rechercher une devise", es: "Buscar moneda", de: "Währung suchen", fa: "جستجوی ارز" }) },
+  { key: "restaurant.delete_section", translations: tx("Delete section", { ar: "حذف القسم", ru: "Удалить раздел", tr: "Bölümü sil", fr: "Supprimer la section", es: "Eliminar sección", de: "Bereich löschen" }) },
+  { key: "restaurant.delete_section_confirm", translations: tx("Delete this section? Dishes will stay saved and can be moved to another section.", { ar: "هل تريد حذف هذا القسم؟ ستبقى الأطباق محفوظة ويمكن نقلها إلى قسم آخر.", ru: "Удалить этот раздел? Блюда останутся сохраненными и их можно перенести в другой раздел.", tr: "Bu bölümü silmek istiyor musunuz? Yemekler kayıtlı kalır ve başka bir bölüme taşınabilir.", fr: "Supprimer cette section ? Les plats resteront enregistrés et pourront être déplacés.", es: "¿Eliminar esta sección? Los platos seguirán guardados y podrán moverse.", de: "Diesen Bereich löschen? Gerichte bleiben gespeichert und können verschoben werden." }) },
+  { key: "restaurant.edit_dish", translations: tx("Edit dish", { ar: "تعديل الطبق", ru: "Изменить блюдо", tr: "Yemeği düzenle", fr: "Modifier le plat", es: "Editar plato", de: "Gericht bearbeiten" }) },
+  { key: "restaurant.delete_dish", translations: tx("Delete dish", { ar: "حذف الطبق", ru: "Удалить блюдо", tr: "Yemeği sil", fr: "Supprimer le plat", es: "Eliminar plato", de: "Gericht löschen" }) },
+  { key: "restaurant.delete_dish_confirm", translations: tx("Delete this dish?", { ar: "هل تريد حذف هذا الطبق؟", ru: "Удалить это блюдо?", tr: "Bu yemeği silmek istiyor musunuz?", fr: "Supprimer ce plat ?", es: "¿Eliminar este plato?", de: "Dieses Gericht löschen?" }) },
+  { key: "restaurant.save_dish", translations: tx("Save dish", { ar: "حفظ الطبق", ru: "Сохранить блюдо", tr: "Yemeği kaydet", fr: "Enregistrer le plat", es: "Guardar plato", de: "Gericht speichern" }) },
+  { key: "restaurant.cancel_edit", translations: tx("Cancel edit", { ar: "إلغاء التعديل", ru: "Отменить изменение", tr: "Düzenlemeyi iptal et", fr: "Annuler la modification", es: "Cancelar edición", de: "Bearbeitung abbrechen" }) },
+  { key: "restaurant.no_dishes", translations: tx("No dishes in this section yet.", { ar: "لا توجد أطباق في هذا القسم بعد.", ru: "В этом разделе пока нет блюд.", tr: "Bu bölümde henüz yemek yok.", fr: "Aucun plat dans cette section pour le moment.", es: "Aún no hay platos en esta sección.", de: "In diesem Bereich gibt es noch keine Gerichte." }) },
+  { key: "restaurant.uncategorized", translations: tx("Without section", { ar: "بدون قسم", ru: "Без раздела", tr: "Bölümsüz", fr: "Sans section", es: "Sin sección", de: "Ohne Bereich" }) },
   { key: "restaurant.search_ingredient", translations: tx("Search ingredient", { ar: "ابحث عن مكون", ru: "Найти ингредиент", tr: "Malzeme ara", fr: "Rechercher un ingrédient", es: "Buscar ingrediente", de: "Zutat suchen" }) },
-  { key: "restaurant.image_url", translations: tx("Dish image URL", { ar: "رابط صورة الطبق", ru: "Ссылка на фото блюда", tr: "Yemek görseli URL", fr: "URL de l'image du plat", es: "URL de imagen del plato", de: "Bild-URL des Gerichts" }) },
+  { key: "restaurant.image_url", translations: tx("Dish image", { ar: "صورة الطبق", ru: "Фото блюда", tr: "Yemek görseli", fr: "Image du plat", es: "Imagen del plato", de: "Gerichtbild", fa: "تصویر غذا" }) },
+  { key: "restaurant.upload_dish_image", translations: tx("Upload dish image", { ar: "رفع صورة الطبق", ru: "Загрузить фото блюда", tr: "Yemek görseli yükle", fr: "Téléverser l'image du plat", es: "Subir imagen del plato", de: "Gerichtbild hochladen", fa: "بارگذاری تصویر غذا" }) },
+  { key: "restaurant.upload_logo", translations: tx("Upload restaurant logo", { ar: "رفع شعار المطعم", ru: "Загрузить логотип ресторана", tr: "Restoran logosu yükle", fr: "Téléverser le logo du restaurant", es: "Subir logo del restaurante", de: "Restaurantlogo hochladen", fa: "بارگذاری لوگوی رستوران" }) },
   { key: "restaurant.category_search", translations: tx("Search or type section name", { ar: "ابحث أو اكتب اسم القسم", ru: "Найдите или введите название раздела", tr: "Bölüm adı ara veya yaz", fr: "Rechercher ou saisir une section", es: "Buscar o escribir sección", de: "Bereich suchen oder eingeben" }) },
   { key: "restaurant.empty_sections_title", translations: tx("Create your first section", { ar: "أنشئ أول قسم", ru: "Создайте первый раздел", tr: "İlk bölümü oluştur", fr: "Créez votre première section", es: "Crea tu primera sección", de: "Ersten Bereich erstellen" }) },
   { key: "restaurant.empty_sections_body", translations: tx("Sections organize dishes before customers see the menu. Add drinks, grills, pizza, desserts, or any restaurant section in your own language.", { ar: "الأقسام تنظّم الأطباق قبل ظهورها للعميل. أضف مشروبات أو مشويات أو بيتزا أو حلويات أو أي قسم بلغة المطعم.", ru: "Разделы упорядочивают блюда до показа меню гостям. Добавьте напитки, гриль, пиццу, десерты или любой раздел на языке ресторана.", tr: "Bölümler, müşteriler menüyü görmeden önce yemekleri düzenler. İçecek, ızgara, pizza, tatlı veya herhangi bir bölümü restoran dilinde ekleyin.", fr: "Les sections organisent les plats avant l'affichage client. Ajoutez boissons, grillades, pizza, desserts ou toute section dans la langue du restaurant.", es: "Las secciones organizan los platos antes de mostrarlos al cliente. Añade bebidas, parrilla, pizza, postres o cualquier sección en el idioma del restaurante.", de: "Bereiche ordnen Gerichte, bevor Gäste das Menü sehen. Fügen Sie Getränke, Grill, Pizza, Desserts oder jeden Bereich in der Restaurantsprache hinzu." }) },

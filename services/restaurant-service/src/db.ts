@@ -5,6 +5,8 @@ export interface RestaurantRecord {
   id: string;
   name: string;
   operatingLanguage: string;
+  currency: string;
+  logoUrl?: string;
   supportedCustomerLanguages: string[];
   status: "draft" | "active" | "paused";
   ownerFirstName: string;
@@ -39,6 +41,8 @@ export async function initRestaurantDatabase() {
       id text PRIMARY KEY,
       name text NOT NULL,
       operating_language text NOT NULL,
+      default_currency text NOT NULL DEFAULT 'USD',
+      logo_url text,
       supported_customer_languages jsonb NOT NULL DEFAULT '[]',
       status text NOT NULL DEFAULT 'active',
       owner_first_name text NOT NULL DEFAULT '',
@@ -55,6 +59,7 @@ export async function initRestaurantDatabase() {
     CREATE TABLE IF NOT EXISTS scanmenu_menu_categories (
       id text PRIMARY KEY,
       restaurant_id text NOT NULL REFERENCES scanmenu_restaurants(id) ON DELETE CASCADE,
+      catalog_key text,
       name jsonb NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
@@ -84,11 +89,15 @@ export async function initRestaurantDatabase() {
     );
   `);
 
+  await pool.query("ALTER TABLE scanmenu_restaurants ADD COLUMN IF NOT EXISTS default_currency text NOT NULL DEFAULT 'USD'");
+  await pool.query("ALTER TABLE scanmenu_restaurants ADD COLUMN IF NOT EXISTS logo_url text");
+  await pool.query("ALTER TABLE scanmenu_menu_categories ADD COLUMN IF NOT EXISTS catalog_key text");
+
   await pool.query(
     `INSERT INTO scanmenu_restaurants (
       id, name, operating_language, supported_customer_languages, status,
-      owner_first_name, owner_last_name, email, phone, address, country, city, selected_plan
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      owner_first_name, owner_last_name, email, phone, address, country, city, selected_plan, default_currency
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
     ON CONFLICT (id) DO NOTHING`,
     [
       "rst_bistro_01",
@@ -103,7 +112,8 @@ export async function initRestaurantDatabase() {
       "Tverskaya 10",
       "Russia",
       "Moscow",
-      "premium"
+      "premium",
+      "RUB"
     ]
   );
 }
@@ -118,6 +128,35 @@ export async function getRestaurantDb(id: string) {
   return result.rows[0] ? mapRestaurant(result.rows[0]) : undefined;
 }
 
+export async function createRestaurantDb(entry: RestaurantRecord) {
+  const result = await pool!.query(
+    `INSERT INTO scanmenu_restaurants (
+      id, name, operating_language, default_currency, logo_url, supported_customer_languages, status,
+      owner_first_name, owner_last_name, email, phone, address, country, city, selected_plan
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+    ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
+    RETURNING *`,
+    [
+      entry.id,
+      entry.name,
+      entry.operatingLanguage,
+      entry.currency,
+      entry.logoUrl ?? null,
+      JSON.stringify(entry.supportedCustomerLanguages),
+      entry.status,
+      entry.ownerFirstName,
+      entry.ownerLastName,
+      entry.email,
+      entry.phone,
+      entry.address,
+      entry.country,
+      entry.city,
+      entry.selectedPlan
+    ]
+  );
+  return mapRestaurant(result.rows[0]);
+}
+
 export async function updateRestaurantProfileDb(id: string, patch: Partial<RestaurantRecord>) {
   const current = await getRestaurantDb(id);
   if (!current) return undefined;
@@ -126,16 +165,18 @@ export async function updateRestaurantProfileDb(id: string, patch: Partial<Resta
     `UPDATE scanmenu_restaurants SET
       name = $2,
       operating_language = $3,
-      supported_customer_languages = $4,
-      status = $5,
-      owner_first_name = $6,
-      owner_last_name = $7,
-      email = $8,
-      phone = $9,
-      address = $10,
-      country = $11,
-      city = $12,
-      selected_plan = $13,
+      default_currency = $4,
+      logo_url = $5,
+      supported_customer_languages = $6,
+      status = $7,
+      owner_first_name = $8,
+      owner_last_name = $9,
+      email = $10,
+      phone = $11,
+      address = $12,
+      country = $13,
+      city = $14,
+      selected_plan = $15,
       updated_at = now()
     WHERE id = $1
     RETURNING *`,
@@ -143,6 +184,8 @@ export async function updateRestaurantProfileDb(id: string, patch: Partial<Resta
       id,
       next.name,
       next.operatingLanguage,
+      next.currency,
+      next.logoUrl ?? null,
       JSON.stringify(next.supportedCustomerLanguages),
       next.status,
       next.ownerFirstName,
@@ -165,16 +208,16 @@ export async function getCategoriesDb(restaurantId: string) {
 
 export async function createCategoryDb(entry: MenuCategory) {
   await pool!.query(
-    "INSERT INTO scanmenu_menu_categories (id, restaurant_id, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
-    [entry.id, entry.restaurantId, JSON.stringify(entry.name)]
+    "INSERT INTO scanmenu_menu_categories (id, restaurant_id, catalog_key, name) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET catalog_key = EXCLUDED.catalog_key, name = EXCLUDED.name",
+    [entry.id, entry.restaurantId, entry.catalogKey ?? null, JSON.stringify(entry.name)]
   );
   return entry;
 }
 
 export async function updateCategoryDb(entry: MenuCategory) {
   const result = await pool!.query(
-    "UPDATE scanmenu_menu_categories SET name = $3 WHERE id = $1 AND restaurant_id = $2 RETURNING *",
-    [entry.id, entry.restaurantId, JSON.stringify(entry.name)]
+    "UPDATE scanmenu_menu_categories SET catalog_key = $3, name = $4 WHERE id = $1 AND restaurant_id = $2 RETURNING *",
+    [entry.id, entry.restaurantId, entry.catalogKey ?? null, JSON.stringify(entry.name)]
   );
   return result.rows[0] ? mapCategory(result.rows[0]) : undefined;
 }
@@ -274,6 +317,8 @@ function mapRestaurant(row: Record<string, unknown>): RestaurantRecord {
     id: String(row.id),
     name: String(row.name),
     operatingLanguage: String(row.operating_language),
+    currency: String(row.default_currency ?? "USD"),
+    logoUrl: row.logo_url ? String(row.logo_url) : undefined,
     supportedCustomerLanguages: Array.isArray(row.supported_customer_languages) ? row.supported_customer_languages.map(String) : [],
     status: String(row.status) as RestaurantRecord["status"],
     ownerFirstName: String(row.owner_first_name ?? ""),
@@ -291,6 +336,7 @@ function mapCategory(row: Record<string, unknown>): MenuCategory {
   return {
     id: String(row.id),
     restaurantId: String(row.restaurant_id),
+    catalogKey: row.catalog_key ? String(row.catalog_key) : undefined,
     name: row.name as LocalizedText
   };
 }

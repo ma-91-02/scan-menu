@@ -1,10 +1,11 @@
 import cors from "cors";
 import express from "express";
 import type { Ingredient, LocalizedText, MenuCategory, MenuItem, Restaurant, SubscriptionPlan } from "@scanmenu/shared";
-import { ingredientTaxonomy, pickCatalogTranslation, pickLocalizedText, scanMenuLanguages } from "@scanmenu/shared";
+import { ingredientTaxonomy, menuSectionTaxonomy, pickCatalogTranslation, pickLocalizedText, scanMenuLanguages } from "@scanmenu/shared";
 import {
   createCategoryDb,
   createMenuItemDb,
+  createRestaurantDb,
   createTableDb,
   deleteCategoryDb,
   deleteMenuItemDb,
@@ -23,6 +24,7 @@ import {
 } from "./db.js";
 
 interface RestaurantProfile extends Restaurant {
+  currency: string;
   ownerFirstName: string;
   ownerLastName: string;
   email: string;
@@ -76,6 +78,7 @@ const restaurants: RestaurantProfile[] = [
     id: "rst_bistro_01",
     name: "Bistro Aurora",
     operatingLanguage: "ru",
+    currency: "RUB",
     supportedCustomerLanguages: ["ar", "en", "ru", "tr"],
     status: "active",
     ownerFirstName: "Anna",
@@ -107,7 +110,7 @@ const dbReady = initRestaurantDatabase().catch((error) => {
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "8mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ data: { service: "restaurant-service", status: "ok" } });
@@ -124,21 +127,13 @@ app.get("/plans", (_req, res) => {
 
 app.get("/:restaurantId", async (req, res) => {
   await dbReady;
-  const restaurant = await loadRestaurant(req.params.restaurantId);
-  if (!restaurant) {
-    res.status(404).json({ error: "Restaurant not found" });
-    return;
-  }
+  const restaurant = await loadOrCreateRestaurant(req.params.restaurantId);
   res.json({ data: restaurant });
 });
 
 app.patch("/:restaurantId/profile", async (req, res) => {
   await dbReady;
-  const restaurant = await loadRestaurant(req.params.restaurantId);
-  if (!restaurant) {
-    res.status(404).json({ error: "Restaurant not found" });
-    return;
-  }
+  const restaurant = await loadOrCreateRestaurant(req.params.restaurantId);
 
   const patch = {
     ownerFirstName: readString(req.body.ownerFirstName, restaurant.ownerFirstName),
@@ -148,7 +143,9 @@ app.patch("/:restaurantId/profile", async (req, res) => {
     phone: readString(req.body.phone, restaurant.phone),
     address: readString(req.body.address, restaurant.address),
     country: readString(req.body.country, restaurant.country),
-    city: readString(req.body.city, restaurant.city)
+    city: readString(req.body.city, restaurant.city),
+    logoUrl: readImageValue(req.body.logoUrl, restaurant.logoUrl),
+    currency: normalizeCurrency(req.body.currency ?? restaurant.currency)
   };
 
   if (hasRestaurantDb()) {
@@ -163,11 +160,11 @@ app.patch("/:restaurantId/profile", async (req, res) => {
 app.patch(["/:restaurantId/plan", "/:restaurantId/subscription"], async (req, res) => {
   await dbReady;
   const restaurantId = String(req.params.restaurantId);
-  const restaurant = await loadRestaurant(restaurantId);
+  const restaurant = await loadOrCreateRestaurant(restaurantId);
   const requestedPlan = String(req.body.planId ?? req.body.plan ?? "");
   const plan = plans.find((item) => item.id === requestedPlan);
 
-  if (!restaurant || !plan) {
+  if (!plan) {
     res.status(404).json({ error: "Restaurant or plan not found" });
     return;
   }
@@ -180,11 +177,7 @@ app.patch(["/:restaurantId/plan", "/:restaurantId/subscription"], async (req, re
 
 app.patch("/:restaurantId/language", async (req, res) => {
   await dbReady;
-  const restaurant = await loadRestaurant(req.params.restaurantId);
-  if (!restaurant) {
-    res.status(404).json({ error: "Restaurant not found" });
-    return;
-  }
+  const restaurant = await loadOrCreateRestaurant(req.params.restaurantId);
 
   const operatingLanguage = String(req.body.operatingLanguage ?? restaurant.operatingLanguage);
   const updatedRestaurant = hasRestaurantDb()
@@ -201,13 +194,27 @@ app.get("/:restaurantId/catalog/categories", async (req, res) => {
 
 app.post("/:restaurantId/catalog/categories", async (req, res) => {
   await dbReady;
-  const entry = await createLocalizedEntry<MenuCategory>(req.params.restaurantId, "cat", req.body.name, req.body.language);
+  await loadOrCreateRestaurant(req.params.restaurantId);
+  const entries = hasRestaurantDb() ? await getCategoriesDb(req.params.restaurantId) : categories;
+  const catalogKey = readCatalogKey(req.body.catalogKey);
+  const language = String(req.body.language ?? "en");
+  const name = catalogKey ? getSectionDisplayName(catalogKey, language) : req.body.name;
+  const existing = catalogKey
+    ? entries.find((item) => item.restaurantId === req.params.restaurantId && item.catalogKey === catalogKey)
+    : undefined;
+
+  if (existing) {
+    res.status(200).json({ data: localizeEntry(existing, language) });
+    return;
+  }
+
+  const entry = await createLocalizedEntry<MenuCategory>(req.params.restaurantId, "cat", name, language, catalogKey);
   if (hasRestaurantDb()) {
     await createCategoryDb(entry);
   } else {
     categories.push(entry);
   }
-  res.status(201).json({ data: localizeEntry(entry, String(req.body.language ?? "en")) });
+  res.status(201).json({ data: localizeEntry(entry, language) });
 });
 
 app.patch("/:restaurantId/catalog/categories/:categoryId", async (req, res) => {
@@ -219,11 +226,16 @@ app.patch("/:restaurantId/catalog/categories/:categoryId", async (req, res) => {
     return;
   }
 
-  entry.name = await buildLocalizedText(String(req.body.name ?? pickLocalizedText(entry.name, String(req.body.language ?? "en"))), String(req.body.language ?? "en"));
+  const language = String(req.body.language ?? "en");
+  const catalogKey = readCatalogKey(req.body.catalogKey);
+  entry.catalogKey = catalogKey;
+  entry.name = catalogKey
+    ? getSectionTranslations(catalogKey)
+    : await buildLocalizedText(String(req.body.name ?? pickLocalizedText(entry.name, language)), language);
   if (hasRestaurantDb()) {
     await updateCategoryDb(entry);
   }
-  res.json({ data: localizeEntry(entry, String(req.body.language ?? "en")) });
+  res.json({ data: localizeEntry(entry, language) });
 });
 
 app.delete("/:restaurantId/catalog/categories/:categoryId", async (req, res) => {
@@ -275,11 +287,7 @@ app.get("/:restaurantId/menu", async (req, res) => {
 
 app.post("/:restaurantId/menu", async (req, res) => {
   await dbReady;
-  const restaurant = await loadRestaurant(req.params.restaurantId);
-  if (!restaurant) {
-    res.status(404).json({ error: "Restaurant not found" });
-    return;
-  }
+  const restaurant = await loadOrCreateRestaurant(req.params.restaurantId);
 
   const language = String(req.body.language ?? restaurant.operatingLanguage);
   const name = String(req.body.name ?? "").trim();
@@ -298,7 +306,7 @@ app.post("/:restaurantId/menu", async (req, res) => {
     name: await buildLocalizedText(name, language),
     description: await buildLocalizedText(String(req.body.description ?? ""), language),
     price,
-    currency: "USD",
+    currency: normalizeCurrency(req.body.currency ?? restaurant.currency),
     isAvailable: true
   };
 
@@ -329,6 +337,7 @@ app.patch("/:restaurantId/menu/:menuItemId", async (req, res) => {
   if (req.body.categoryId !== undefined) item.categoryId = String(req.body.categoryId);
   if (Array.isArray(req.body.ingredientIds)) item.ingredientIds = req.body.ingredientIds.map(String);
   if (req.body.price !== undefined) item.price = Number(req.body.price);
+  if (req.body.currency !== undefined) item.currency = normalizeCurrency(req.body.currency);
   if (req.body.isAvailable !== undefined) item.isAvailable = Boolean(req.body.isAvailable);
   if (req.body.imageUrl !== undefined) item.imageUrl = String(req.body.imageUrl);
   if (hasRestaurantDb()) {
@@ -383,9 +392,56 @@ async function loadRestaurant(id: string): Promise<RestaurantRecord | Restaurant
   return hasRestaurantDb() ? getRestaurantDb(id) : findRestaurant(id);
 }
 
+async function loadOrCreateRestaurant(id: string): Promise<RestaurantRecord | RestaurantProfile> {
+  const existing = await loadRestaurant(id);
+  if (existing) return existing;
+
+  const restaurant = createDefaultRestaurant(id);
+  if (hasRestaurantDb()) {
+    return createRestaurantDb(restaurant);
+  }
+
+  restaurants.push(restaurant);
+  return restaurant;
+}
+
+function createDefaultRestaurant(id: string): RestaurantProfile {
+  return {
+    id,
+    name: "New restaurant",
+    operatingLanguage: "en",
+    currency: "USD",
+    supportedCustomerLanguages: scanMenuLanguages.map((language) => language.code),
+    status: "active",
+    ownerFirstName: "",
+    ownerLastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    country: "",
+    city: "",
+    selectedPlan: "basic"
+  };
+}
+
 function readString(value: unknown, fallback: string) {
   const nextValue = String(value ?? "").trim();
   return nextValue || fallback;
+}
+
+function readImageValue(value: unknown, fallback?: string) {
+  if (value === undefined) return fallback;
+  const nextValue = String(value ?? "").trim();
+  if (!nextValue) return undefined;
+  if (nextValue.startsWith("data:image/") || nextValue.startsWith("https://") || nextValue.startsWith("http://")) {
+    return nextValue;
+  }
+  return fallback;
+}
+
+function normalizeCurrency(value: unknown) {
+  const code = String(value ?? "USD").trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : "USD";
 }
 
 function localizeEntries<T extends MenuCategory | Ingredient>(entries: T[], restaurantId: string, language: string, query: string) {
@@ -397,13 +453,24 @@ function localizeEntries<T extends MenuCategory | Ingredient>(entries: T[], rest
 }
 
 function localizeEntry<T extends MenuCategory | Ingredient>(entry: T, language: string) {
+  if ("catalogKey" in entry && entry.catalogKey) {
+    const translations = getSectionTranslations(entry.catalogKey);
+    if (Object.keys(translations).length) {
+      return {
+        ...entry,
+        name: translations,
+        displayName: pickLocalizedText(translations, language)
+      };
+    }
+  }
+
   return {
     ...entry,
     displayName: pickLocalizedText(entry.name, language)
   };
 }
 
-async function createLocalizedEntry<T extends MenuCategory | Ingredient>(restaurantId: string, prefix: string, name: unknown, language: unknown): Promise<T> {
+async function createLocalizedEntry<T extends MenuCategory | Ingredient>(restaurantId: string, prefix: string, name: unknown, language: unknown, catalogKey?: string): Promise<T> {
   const ownerLanguage = String(language ?? "en");
   const text = String(name ?? "").trim();
 
@@ -414,8 +481,23 @@ async function createLocalizedEntry<T extends MenuCategory | Ingredient>(restaur
   return {
     id: `${prefix}_${Date.now()}`,
     restaurantId,
-    name: await buildLocalizedText(text, ownerLanguage)
+    ...(catalogKey ? { catalogKey } : {}),
+    name: catalogKey ? getSectionTranslations(catalogKey) : await buildLocalizedText(text, ownerLanguage)
   } as T;
+}
+
+function readCatalogKey(value: unknown) {
+  const key = String(value ?? "").trim();
+  return menuSectionTaxonomy.some((section) => section.id === key) ? key : undefined;
+}
+
+function getSectionTranslations(catalogKey: string): LocalizedText {
+  return menuSectionTaxonomy.find((section) => section.id === catalogKey)?.translations ?? {};
+}
+
+function getSectionDisplayName(catalogKey: string, language: string) {
+  const translations = getSectionTranslations(catalogKey);
+  return pickLocalizedText(translations, language) || catalogKey;
 }
 
 async function getLocalizedMenu(restaurantId: string, language: string) {

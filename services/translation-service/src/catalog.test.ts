@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   allergenTaxonomy,
   ingredientTaxonomy,
+  menuSectionTaxonomy,
   modifierTaxonomy,
   scanMenuLanguages,
   TranslationCoverageValidator,
@@ -77,6 +78,13 @@ test("each modifier includes all required languages", () => {
 test("each allergen includes all required languages", () => {
   assertCompleteTranslations(allergenTaxonomy);
   assert.deepEqual(validator.validateAllergenTaxonomy(allergenTaxonomy), { ok: true, issues: [] });
+});
+
+test("each menu section includes all required languages", () => {
+  assertCompleteTranslations(menuSectionTaxonomy);
+  assert.ok(menuSectionTaxonomy.some((section) => section.id === "hot_drinks"));
+  assert.ok(menuSectionTaxonomy.some((section) => section.id === "grills"));
+  assert.ok(menuSectionTaxonomy.some((section) => section.id === "pizza"));
 });
 
 test("TranslationCoverageValidator fails when a required language is missing", () => {

@@ -7,6 +7,7 @@ type TabId = "menu" | "cashier" | "kitchen" | "employees" | "tables" | "plans" |
 
 interface CatalogEntry {
   id: string;
+  catalogKey?: string;
   name?: Record<string, string>;
   translations?: Record<string, string>;
   displayName: string;
@@ -55,6 +56,8 @@ interface RestaurantProfile {
   id: string;
   name: string;
   operatingLanguage: string;
+  currency?: string;
+  logoUrl?: string;
   ownerFirstName?: string;
   ownerLastName?: string;
   email?: string;
@@ -81,8 +84,47 @@ interface StaffUser {
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const ownerRestaurantId = "rst_bistro_01";
+const fallbackRestaurantId = "rst_bistro_01";
 const sessionStorageKey = "scanmenu-session";
+const fallbackCurrencyCodes = [
+  "AED", "AFN", "ALL", "AMD", "ANG", "AOA", "ARS", "AUD", "AWG", "AZN", "BAM", "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB", "BRL", "BSD",
+  "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHF", "CLP", "CNY", "COP", "CRC", "CUP", "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB",
+  "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR", "IQD", "IRR", "ISK",
+  "JMD", "JOD", "JPY", "KES", "KGS", "KHR", "KMF", "KRW", "KWD", "KZT", "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK",
+  "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN", "PGK", "PHP", "PKR",
+  "PLN", "PYG", "QAR", "RON", "RSD", "RUB", "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SOS", "SRD", "SSP", "STN", "SYP", "SZL",
+  "THB", "TJS", "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VES", "VND", "VUV", "WST", "XAF", "XCD", "XOF",
+  "XPF", "YER", "ZAR", "ZMW", "ZWL"
+];
+
+const currencyDisplayNames: Record<string, Partial<Record<string, string>>> = {
+  AED: { en: "UAE dirham", ar: "درهم إماراتي", fa: "درهم امارات", ru: "Дирхам ОАЭ", tr: "BAE dirhemi" },
+  BHD: { en: "Bahraini dinar", ar: "دينار بحريني", fa: "دینار بحرین", ru: "Бахрейнский динар", tr: "Bahreyn dinarı" },
+  CAD: { en: "Canadian dollar", ar: "دولار كندي", fa: "دلار کانادا", ru: "Канадский доллар", tr: "Kanada doları" },
+  CHF: { en: "Swiss franc", ar: "فرنك سويسري", fa: "فرانک سوئیس", ru: "Швейцарский франк", tr: "İsviçre frangı" },
+  CNY: { en: "Chinese yuan", ar: "يوان صيني", fa: "یوان چین", ru: "Китайский юань", tr: "Çin yuanı" },
+  DZD: { en: "Algerian dinar", ar: "دينار جزائري", fa: "دینار الجزایر", ru: "Алжирский динар", tr: "Cezayir dinarı" },
+  EGP: { en: "Egyptian pound", ar: "جنيه مصري", fa: "پوند مصر", ru: "Египетский фунт", tr: "Mısır lirası" },
+  EUR: { en: "Euro", ar: "يورو", fa: "یورو", ru: "Евро", tr: "Euro" },
+  GBP: { en: "British pound", ar: "جنيه إسترليني", fa: "پوند بریتانیا", ru: "Британский фунт", tr: "İngiliz sterlini" },
+  IQD: { en: "Iraqi dinar", ar: "الدينار العراقي", fa: "دینار عراق", ru: "Иракский динар", tr: "Irak dinarı" },
+  IRR: { en: "Iranian rial", ar: "ريال إيراني", fa: "ریال ایران", ru: "Иранский риал", tr: "İran riyali" },
+  JOD: { en: "Jordanian dinar", ar: "دينار أردني", fa: "دینار اردن", ru: "Иорданский динар", tr: "Ürdün dinarı" },
+  JPY: { en: "Japanese yen", ar: "ين ياباني", fa: "ین ژاپن", ru: "Японская иена", tr: "Japon yeni" },
+  KWD: { en: "Kuwaiti dinar", ar: "دينار كويتي", fa: "دینار کویت", ru: "Кувейтский динар", tr: "Kuveyt dinarı" },
+  LBP: { en: "Lebanese pound", ar: "ليرة لبنانية", fa: "پوند لبنان", ru: "Ливанский фунт", tr: "Lübnan lirası" },
+  LYD: { en: "Libyan dinar", ar: "دينار ليبي", fa: "دینار لیبی", ru: "Ливийский динар", tr: "Libya dinarı" },
+  MAD: { en: "Moroccan dirham", ar: "درهم مغربي", fa: "درهم مراکش", ru: "Марокканский дирхам", tr: "Fas dirhemi" },
+  OMR: { en: "Omani rial", ar: "ريال عماني", fa: "ریال عمان", ru: "Оманский риал", tr: "Umman riyali" },
+  QAR: { en: "Qatari riyal", ar: "ريال قطري", fa: "ریال قطر", ru: "Катарский риал", tr: "Katar riyali" },
+  RUB: { en: "Russian ruble", ar: "روبل روسي", fa: "روبل روسیه", ru: "Российский рубль", tr: "Rus rublesi" },
+  SAR: { en: "Saudi riyal", ar: "ريال سعودي", fa: "ریال سعودی", ru: "Саудовский риял", tr: "Suudi riyali" },
+  SYP: { en: "Syrian pound", ar: "ليرة سورية", fa: "پوند سوریه", ru: "Сирийский фунт", tr: "Suriye lirası" },
+  TND: { en: "Tunisian dinar", ar: "دينار تونسي", fa: "دینار تونس", ru: "Тунисский динар", tr: "Tunus dinarı" },
+  TRY: { en: "Turkish lira", ar: "ليرة تركية", fa: "لیر ترکیه", ru: "Турецкая лира", tr: "Türk lirası" },
+  USD: { en: "US dollar", ar: "دولار أمريكي", fa: "دلار آمریکا", ru: "Доллар США", tr: "ABD doları" },
+  YER: { en: "Yemeni rial", ar: "ريال يمني", fa: "ریال یمن", ru: "Йеменский риал", tr: "Yemen riyali" }
+};
 
 const copy = {
   ar: {
@@ -113,7 +155,7 @@ const copy = {
     price: "السعر",
     ingredients: "المكونات",
     ingredientSearch: "ابحث عن مكون",
-    imageUrl: "رابط صورة الطبق",
+    imageUrl: "صورة الطبق",
     emptySectionsTitle: "أنشئ أول قسم",
     emptySectionsBody: "الأقسام تنظّم الأطباق قبل ظهورها للعميل. أضف مشروبات أو مشويات أو بيتزا أو حلويات أو أي قسم بلغة المطعم.",
     deleteAccount: "حذف الحساب",
@@ -147,7 +189,7 @@ const copy = {
     price: "Price",
     ingredients: "Ingredients",
     ingredientSearch: "Search ingredient",
-    imageUrl: "Dish image URL",
+    imageUrl: "Dish image",
     emptySectionsTitle: "Create your first section",
     emptySectionsBody: "Sections organize dishes before customers see the menu. Add drinks, grills, pizza, desserts, or any restaurant section in your own language.",
     deleteAccount: "Delete account",
@@ -181,7 +223,7 @@ const copy = {
     price: "Цена",
     ingredients: "Ингредиенты",
     ingredientSearch: "Найти ингредиент",
-    imageUrl: "Ссылка на фото блюда",
+    imageUrl: "Фото блюда",
     emptySectionsTitle: "Создайте первый раздел",
     emptySectionsBody: "Разделы упорядочивают блюда до показа меню гостям. Добавьте напитки, гриль, пиццу, десерты или любой раздел на языке ресторана.",
     deleteAccount: "Удалить аккаунт",
@@ -215,7 +257,7 @@ const copy = {
     price: "Fiyat",
     ingredients: "Malzemeler",
     ingredientSearch: "Malzeme ara",
-    imageUrl: "Yemek görseli URL",
+    imageUrl: "Yemek görseli",
     emptySectionsTitle: "İlk bölümü oluştur",
     emptySectionsBody: "Bölümler, müşteriler menüyü görmeden önce yemekleri düzenler. İçecek, ızgara, pizza, tatlı veya herhangi bir bölümü restoran dilinde ekleyin.",
     deleteAccount: "Hesabı sil",
@@ -227,19 +269,24 @@ export default function RestaurantDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabId>("menu");
   const [role, setRole] = useState("owner");
   const [languages, setLanguages] = useState<SupportedLanguage[]>(supportedLanguages);
-  const [profile, setProfile] = useState<RestaurantProfile>({ id: ownerRestaurantId, name: "Bistro Aurora", operatingLanguage: "ru" });
+  const [restaurantId, setRestaurantId] = useState(fallbackRestaurantId);
+  const [profile, setProfile] = useState<RestaurantProfile>({ id: fallbackRestaurantId, name: "Bistro Aurora", operatingLanguage: "ru" });
   const [ownerLanguage, setOwnerLanguage] = useState("ru");
   const [orders, setOrders] = useState<RestaurantOrder[]>([]);
   const [categories, setCategories] = useState<CatalogEntry[]>([]);
+  const [standardCategories, setStandardCategories] = useState<CatalogEntry[]>([]);
   const [ingredients, setIngredients] = useState<CatalogEntry[]>([]);
   const [menu, setMenu] = useState<MenuEntry[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [form, setForm] = useState({ name: "", description: "", imageUrl: "", price: "0", categoryId: "", ingredientIds: [] as string[] });
+  const [editingItemId, setEditingItemId] = useState("");
+  const [restaurantCurrency, setRestaurantCurrency] = useState("USD");
   const [activeCategoryId, setActiveCategoryId] = useState("");
   const [showCategorySearch, setShowCategorySearch] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
+  const [currencySearch, setCurrencySearch] = useState("");
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [staffForm, setStaffForm] = useState({ name: "", email: "", username: "", role: "viewer" });
   const [tableNumber, setTableNumber] = useState("");
@@ -270,10 +317,16 @@ export default function RestaurantDashboardPage() {
   const activeOrders = useMemo(() => orders.filter((order) => !["completed", "cancelled"].includes(order.status)), [orders]);
   const kitchenOrders = activeOrders.filter((order) => order.type !== "waiter_request");
   const waiterRequests = activeOrders.filter((order) => order.type === "waiter_request");
-  const visibleCategories = useMemo(() => searchEntries(categories, categorySearch), [categories, categorySearch]);
+  const categorySuggestions = useMemo(() => {
+    const existingIds = new Set(categories.map((category) => category.id));
+    const existingCatalogKeys = new Set(categories.map((category) => category.catalogKey).filter(Boolean));
+    return [...categories, ...standardCategories.filter((category) => !existingIds.has(category.id) && !existingCatalogKeys.has(category.id))];
+  }, [categories, standardCategories]);
+  const visibleCategories = useMemo(() => searchEntries(categorySuggestions, categorySearch), [categorySearch, categorySuggestions]);
   const visibleIngredients = useMemo(() => searchEntries(ingredients, ingredientSearch).filter((ingredient) => !form.ingredientIds.includes(ingredient.id)).slice(0, 8), [form.ingredientIds, ingredientSearch, ingredients]);
   const selectedIngredients = ingredients.filter((ingredient) => form.ingredientIds.includes(ingredient.id));
-  const menuByActiveCategory = activeCategoryId ? menu.filter((item) => item.categoryId === activeCategoryId) : menu;
+  const uncategorizedMenu = menu.filter((item) => !item.categoryId || !categories.some((category) => category.id === item.categoryId));
+  const currencyOptions = useMemo(() => searchCurrencyCodes(currencySearch, ownerLanguage), [currencySearch, ownerLanguage]);
   const paymentLabel = (value?: string) => tt(`payment.${value ?? "cash"}`, value ?? "cash");
   const statusLabel = (value?: string) => tt(`status.${value ?? "pending"}`, value ?? "pending");
 
@@ -289,19 +342,6 @@ export default function RestaurantDashboardPage() {
   }, [languages, ownerLanguage]);
 
   useEffect(() => {
-    const sessionId = localStorage.getItem(sessionStorageKey);
-    if (!sessionId) return;
-
-    fetch(`${apiUrl}/auth/session/${sessionId}`)
-      .then((response) => response.ok ? response.json() : null)
-      .then((payload) => {
-        const nextRole = payload?.data?.user?.role;
-        if (nextRole) setRole(String(nextRole));
-      })
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
     if (!canSeeTab(role, activeTab)) {
       setActiveTab(defaultTabForRole(role));
     }
@@ -310,7 +350,7 @@ export default function RestaurantDashboardPage() {
   useEffect(() => {
     void loadLocalizedData(ownerLanguage);
     void fetchJson(`/translations/translations/${ownerLanguage}`, {} as Record<string, string>).then(setUi);
-    const events = new EventSource(`${apiUrl}/orders/events?restaurantId=${ownerRestaurantId}&language=${ownerLanguage}`);
+    const events = new EventSource(`${apiUrl}/orders/events?restaurantId=${restaurantId}&language=${ownerLanguage}`);
     const update = (event: Event) => {
       const payload = JSON.parse((event as MessageEvent).data);
       setOrders(payload.data ?? []);
@@ -318,36 +358,45 @@ export default function RestaurantDashboardPage() {
     events.addEventListener("snapshot", update);
     events.addEventListener("orders", update);
     return () => events.close();
-  }, [ownerLanguage]);
+  }, [ownerLanguage, restaurantId]);
 
   async function loadBootstrap() {
+    const session = await loadSession();
+    const nextRestaurantId = session?.user?.restaurantId ? String(session.user.restaurantId) : fallbackRestaurantId;
+    const nextRole = session?.user?.staffRole ?? session?.user?.role;
+    setRestaurantId(nextRestaurantId);
+    if (nextRole) setRole(String(nextRole));
+
     const [languagePayload, profilePayload, plansPayload, tablesPayload, staffPayload] = await Promise.all([
       fetchJson("/translations/languages", supportedLanguages),
-      fetchJson(`/restaurants/${ownerRestaurantId}`, profile),
+      fetchJson(`/restaurants/${nextRestaurantId}`, { ...profile, id: nextRestaurantId }),
       fetchJson("/restaurants/plans", [] as Plan[]),
-      fetchJson(`/restaurants/${ownerRestaurantId}/tables`, [] as RestaurantTable[]),
-      fetchStaff()
+      fetchJson(`/restaurants/${nextRestaurantId}/tables`, [] as RestaurantTable[]),
+      fetchStaff(nextRestaurantId)
     ]);
     setLanguages(languagePayload);
     setProfile(profilePayload);
     setOwnerLanguage(profilePayload.operatingLanguage ?? "ru");
+    setRestaurantCurrency(profilePayload.currency ?? "USD");
     setPlans(plansPayload);
     setTables(tablesPayload);
     setStaff(staffPayload);
   }
 
   async function loadLocalizedData(language: string) {
-    const [categoryPayload, ingredientPayload, menuPayload, orderPayload] = await Promise.all([
-      fetchJson(`/restaurants/${ownerRestaurantId}/catalog/categories?language=${language}`, [] as CatalogEntry[]),
+    const [categoryPayload, standardCategoryPayload, ingredientPayload, menuPayload, orderPayload] = await Promise.all([
+      fetchJson(`/restaurants/${restaurantId}/catalog/categories?language=${language}`, [] as CatalogEntry[]),
+      fetchJson(`/translations/sections/${language}`, [] as CatalogEntry[]),
       fetchJson(`/translations/ingredients/${language}`, [] as CatalogEntry[]),
-      fetchJson(`/restaurants/${ownerRestaurantId}/menu?language=${language}`, [] as MenuEntry[]),
-      fetchJson(`/orders?restaurantId=${ownerRestaurantId}&language=${language}`, [] as RestaurantOrder[])
+      fetchJson(`/restaurants/${restaurantId}/menu?language=${language}`, [] as MenuEntry[]),
+      fetchJson(`/orders?restaurantId=${restaurantId}&language=${language}`, [] as RestaurantOrder[])
     ]);
     setCategories(categoryPayload);
+    setStandardCategories(standardCategoryPayload);
     setIngredients(ingredientPayload);
     setMenu(menuPayload);
     setOrders(orderPayload);
-    const nextCategoryId = activeCategoryId || categoryPayload[0]?.id || "";
+    const nextCategoryId = categoryPayload.some((category) => category.id === activeCategoryId) ? activeCategoryId : categoryPayload[0]?.id || "";
     setActiveCategoryId(nextCategoryId);
     setForm((current) => ({ ...current, categoryId: current.categoryId || nextCategoryId }));
   }
@@ -362,12 +411,23 @@ export default function RestaurantDashboardPage() {
     }
   }
 
-  async function fetchStaff() {
+  async function loadSession() {
+    const sessionId = localStorage.getItem(sessionStorageKey);
+    if (!sessionId) return null;
+    try {
+      const response = await fetch(`${apiUrl}/auth/session/${sessionId}`);
+      return response.ok ? await response.json() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function fetchStaff(nextRestaurantId = restaurantId) {
     const sessionId = localStorage.getItem(sessionStorageKey);
     if (!sessionId) return [] as StaffUser[];
 
     try {
-      const response = await fetch(`${apiUrl}/auth/restaurants/${ownerRestaurantId}/staff`, {
+      const response = await fetch(`${apiUrl}/auth/restaurants/${nextRestaurantId}/staff`, {
         headers: { "x-session-id": sessionId }
       });
       const payload = await response.json();
@@ -384,17 +444,62 @@ export default function RestaurantDashboardPage() {
 
   async function updateOwnerLanguage(nextLanguage: string) {
     setOwnerLanguage(nextLanguage);
-    await fetch(`${apiUrl}/restaurants/${ownerRestaurantId}/language`, {
+    await fetch(`${apiUrl}/restaurants/${restaurantId}/language`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ operatingLanguage: nextLanguage })
     }).catch(() => undefined);
   }
 
-  async function addMenuItem() {
+  async function updateRestaurantCurrency(nextCurrency: string) {
+    setRestaurantCurrency(nextCurrency);
+    const response = await fetch(`${apiUrl}/restaurants/${restaurantId}/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currency: nextCurrency })
+    }).catch(() => null);
+    const payload = await response?.json().catch(() => null);
+    if (payload?.data) setProfile(payload.data);
+  }
+
+  async function handleDishImageUpload(file?: File) {
+    if (!file) return;
+    const imageUrl = await fileToDataUrl(file);
+    setForm((current) => ({ ...current, imageUrl }));
+  }
+
+  async function handleLogoUpload(file?: File) {
+    if (!file) return;
+    const logoUrl = await fileToDataUrl(file);
+    const nextProfile = { ...profile, logoUrl };
+    setProfile(nextProfile);
+    const response = await fetch(`${apiUrl}/restaurants/${restaurantId}/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ownerFirstName: nextProfile.ownerFirstName,
+        ownerLastName: nextProfile.ownerLastName,
+        email: nextProfile.email,
+        restaurantName: nextProfile.name,
+        phone: nextProfile.phone,
+        address: nextProfile.address,
+        country: nextProfile.country,
+        city: nextProfile.city,
+        currency: restaurantCurrency,
+        logoUrl
+      })
+    }).catch(() => null);
+    const payload = await response?.json().catch(() => null);
+    if (payload?.data) setProfile(payload.data);
+  }
+
+  async function saveMenuItem() {
     if (!form.name.trim()) return;
-    await fetch(`${apiUrl}/restaurants/${ownerRestaurantId}/menu`, {
-      method: "POST",
+    const path = editingItemId
+      ? `${apiUrl}/restaurants/${restaurantId}/menu/${editingItemId}`
+      : `${apiUrl}/restaurants/${restaurantId}/menu`;
+    await fetch(path, {
+      method: editingItemId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         language: ownerLanguage,
@@ -403,19 +508,47 @@ export default function RestaurantDashboardPage() {
         name: form.name,
         description: form.description,
         imageUrl: form.imageUrl,
-        price: Number(form.price) || 0
+        price: Number(form.price) || 0,
+        currency: restaurantCurrency
       })
     });
-    setForm({ name: "", description: "", imageUrl: "", price: "0", categoryId: activeCategoryId || categories[0]?.id || "", ingredientIds: [] });
+    resetMenuForm();
     setIngredientSearch("");
     await loadLocalizedData(ownerLanguage);
   }
 
-  async function addCategory() {
-    const name = categorySearch.trim();
+  function resetMenuForm() {
+    setEditingItemId("");
+    setForm({ name: "", description: "", imageUrl: "", price: "0", categoryId: activeCategoryId || categories[0]?.id || "", ingredientIds: [] });
+  }
+
+  function editMenuItem(item: MenuEntry) {
+    const categoryId = item.categoryId || activeCategoryId || categories[0]?.id || "";
+    setEditingItemId(item.id);
+    setActiveCategoryId(categoryId);
+    setRestaurantCurrency(item.currency || restaurantCurrency);
+    setForm({
+      name: item.displayName,
+      description: item.displayDescription,
+      imageUrl: item.imageUrl ?? "",
+      price: String(item.price),
+      categoryId,
+      ingredientIds: item.ingredients?.map((ingredient) => ingredient.id) ?? []
+    });
+  }
+
+  async function deleteMenuItem(itemId: string) {
+    if (!window.confirm(tt("restaurant.delete_dish_confirm", "Delete this dish?"))) return;
+    await fetch(`${apiUrl}/restaurants/${restaurantId}/menu/${itemId}`, { method: "DELETE" });
+    if (editingItemId === itemId) resetMenuForm();
+    await loadLocalizedData(ownerLanguage);
+  }
+
+  async function addCategory(nextName = categorySearch, catalogKey?: string) {
+    const name = nextName.trim();
     if (!name) return;
 
-    const existing = categories.find((category) => matchesEntry(category, name));
+    const existing = categories.find((category) => (catalogKey && category.catalogKey === catalogKey) || matchesEntry(category, name));
     if (existing) {
       setActiveCategoryId(existing.id);
       setForm((current) => ({ ...current, categoryId: existing.id }));
@@ -424,10 +557,10 @@ export default function RestaurantDashboardPage() {
       return;
     }
 
-    const response = await fetch(`${apiUrl}/restaurants/${ownerRestaurantId}/catalog/categories`, {
+    const response = await fetch(`${apiUrl}/restaurants/${restaurantId}/catalog/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ language: ownerLanguage, name })
+      body: JSON.stringify({ language: ownerLanguage, name, catalogKey })
     });
     const payload = await response.json().catch(() => null);
     if (response.ok && payload?.data?.id) {
@@ -439,6 +572,30 @@ export default function RestaurantDashboardPage() {
     }
   }
 
+  function chooseCategorySuggestion(category: CatalogEntry) {
+    const catalogKey = category.catalogKey ?? category.id;
+    const existing = categories.find((item) => item.catalogKey === catalogKey || item.id === category.id || matchesEntry(item, category.displayName));
+    if (existing) {
+      setActiveCategoryId(existing.id);
+      setForm((current) => ({ ...current, categoryId: existing.id }));
+      setShowCategorySearch(false);
+      setCategorySearch("");
+      return;
+    }
+
+    void addCategory(category.displayName, standardCategories.some((item) => item.id === catalogKey) ? catalogKey : category.catalogKey);
+  }
+
+  async function deleteCategory(categoryId: string) {
+    if (!window.confirm(tt("restaurant.delete_section_confirm", "Delete this section? Dishes will stay saved and can be moved to another section."))) return;
+    await fetch(`${apiUrl}/restaurants/${restaurantId}/catalog/categories/${categoryId}`, { method: "DELETE" });
+    if (activeCategoryId === categoryId) {
+      setActiveCategoryId("");
+      setForm((current) => ({ ...current, categoryId: "" }));
+    }
+    await loadLocalizedData(ownerLanguage);
+  }
+
   async function patchOrder(path: string, body: Record<string, unknown>) {
     await fetch(`${apiUrl}${path}`, {
       method: "PATCH",
@@ -448,7 +605,7 @@ export default function RestaurantDashboardPage() {
   }
 
   async function selectPlan(planId: string) {
-    const response = await fetch(`${apiUrl}/restaurants/${ownerRestaurantId}/plan`, {
+    const response = await fetch(`${apiUrl}/restaurants/${restaurantId}/plan`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planId })
@@ -466,7 +623,7 @@ export default function RestaurantDashboardPage() {
       headers: { "Content-Type": "application/json", ...sessionHeader() },
       body: JSON.stringify({
         ...staffForm,
-        restaurantId: ownerRestaurantId,
+        restaurantId: restaurantId,
         restaurantName: profile.name,
         preferredLanguage: ownerLanguage
       })
@@ -478,17 +635,17 @@ export default function RestaurantDashboardPage() {
 
   async function createTable() {
     if (!tableNumber.trim()) return;
-    await fetch(`${apiUrl}/restaurants/${ownerRestaurantId}/tables`, {
+    await fetch(`${apiUrl}/restaurants/${restaurantId}/tables`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ number: tableNumber })
     });
     setTableNumber("");
-    setTables(await fetchJson(`/restaurants/${ownerRestaurantId}/tables`, [] as RestaurantTable[]));
+    setTables(await fetchJson(`/restaurants/${restaurantId}/tables`, [] as RestaurantTable[]));
   }
 
   async function saveProfile() {
-    const response = await fetch(`${apiUrl}/restaurants/${ownerRestaurantId}/profile`, {
+    const response = await fetch(`${apiUrl}/restaurants/${restaurantId}/profile`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -499,7 +656,9 @@ export default function RestaurantDashboardPage() {
         phone: profile.phone,
         address: profile.address,
         country: profile.country,
-        city: profile.city
+        city: profile.city,
+        currency: restaurantCurrency,
+        logoUrl: profile.logoUrl
       })
     });
     const payload = await response.json();
@@ -580,6 +739,19 @@ export default function RestaurantDashboardPage() {
                 <h2>{tt("restaurant.menu", t.menu)}</h2>
                 <button className="section-add-button" type="button" onClick={() => setShowCategorySearch((value) => !value)}>+ {tt("restaurant.add_section", t.addCategory)}</button>
               </div>
+              <label className="currency-select-row">
+                {tt("restaurant.currency", "Restaurant currency")}
+                <input
+                  placeholder={tt("restaurant.currency_search", "Search currency")}
+                  value={currencySearch}
+                  onChange={(event) => setCurrencySearch(event.target.value)}
+                />
+                <select value={restaurantCurrency} onChange={(event) => void updateRestaurantCurrency(event.target.value)}>
+                  {currencyOptions.map((code) => (
+                    <option key={code} value={code}>{currencyLabel(code, ownerLanguage)}</option>
+                  ))}
+                </select>
+              </label>
               {showCategorySearch ? (
                 <div className="catalog-search-panel">
                   <input
@@ -594,13 +766,8 @@ export default function RestaurantDashboardPage() {
                       <button
                         key={category.id}
                         type="button"
-                        onClick={() => {
-                          setActiveCategoryId(category.id);
-                          setForm((current) => ({ ...current, categoryId: category.id }));
-                          setShowCategorySearch(false);
-                          setCategorySearch("");
-                        }}
-                      >
+	                        onClick={() => chooseCategorySuggestion(category)}
+	                      >
                         {category.displayName}
                       </button>
                     ))}
@@ -627,7 +794,11 @@ export default function RestaurantDashboardPage() {
                 <div className="menu-builder">
                   <label>{tt("restaurant.item_name", t.itemName)}<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
                   <label>{tt("restaurant.description", t.description)}<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-                  <label>{tt("restaurant.image_url", t.imageUrl)}<input value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} /></label>
+                  <label className="file-upload-control">
+                    {tt("restaurant.upload_dish_image", tt("restaurant.image_url", t.imageUrl))}
+                    <input type="file" accept="image/*" onChange={(event) => void handleDishImageUpload(event.target.files?.[0])} />
+                    {form.imageUrl ? <img alt="" className="menu-image-preview" src={form.imageUrl} /> : null}
+                  </label>
                   <label>{tt("restaurant.price", t.price)}<input type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></label>
                   <label>{tt("restaurant.section", "Section")}<select value={form.categoryId} onChange={(event) => {
                     setActiveCategoryId(event.target.value);
@@ -653,27 +824,94 @@ export default function RestaurantDashboardPage() {
                           + {ingredient.displayName}
                         </button>
                       ))}
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => void addMenuItem()}>{tt("common.add", t.add)}</button>
-                </div>
-              ) : (
+	                    </div>
+	                  </div>
+	                  <div className="menu-form-actions">
+	                    <button type="button" onClick={() => void saveMenuItem()}>
+	                      {editingItemId ? tt("restaurant.save_dish", tt("common.save", t.save)) : tt("common.add", t.add)}
+	                    </button>
+	                    {editingItemId ? (
+	                      <button className="muted" type="button" onClick={resetMenuForm}>{tt("restaurant.cancel_edit", t.cancel)}</button>
+	                    ) : null}
+	                  </div>
+	                </div>
+	              ) : (
                 <div className="menu-empty-state">
                   <strong>{tt("restaurant.empty_sections_title", t.emptySectionsTitle)}</strong>
                   <p>{tt("restaurant.empty_sections_body", t.emptySectionsBody)}</p>
                 </div>
               )}
-              <div className="owner-table">
-                {menuByActiveCategory.map((item) => (
-                  <div className="owner-table-row menu-row" key={item.id}>
-                    <span>{item.imageUrl ? <img alt="" className="menu-item-thumb" src={item.imageUrl} /> : null}{item.displayName}</span>
-                    <span>{item.ingredients?.map((ingredient) => ingredient.displayName).join(", ")}</span>
-                    <span>{item.price} {item.currency}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
+	              <div className="menu-section-list">
+	                {categories.map((category) => {
+	                  const sectionItems = menu.filter((item) => item.categoryId === category.id);
+	                  return (
+	                    <article className="menu-section-card" key={category.id}>
+	                      <header className="menu-section-header">
+	                        <div>
+	                          <h3>{category.displayName}</h3>
+	                          <span>{sectionItems.length} {tt("restaurant.add_dish", t.addItemToCategory)}</span>
+	                        </div>
+	                        <div className="menu-section-actions">
+	                          <button type="button" onClick={() => {
+	                            setActiveCategoryId(category.id);
+	                            setForm((current) => ({ ...current, categoryId: category.id }));
+	                          }}>+ {tt("restaurant.add_dish", t.addItemToCategory)}</button>
+	                          <button className="danger" type="button" onClick={() => void deleteCategory(category.id)}>{tt("restaurant.delete_section", "Delete section")}</button>
+	                        </div>
+	                      </header>
+	                      {sectionItems.length ? (
+	                        <div className="menu-dish-list">
+	                          {sectionItems.map((item) => (
+	                            <article className="menu-dish-card" key={item.id}>
+	                              {item.imageUrl ? <img alt={item.displayName} className="menu-dish-image" src={item.imageUrl} /> : <div className="menu-dish-image placeholder">{item.displayName.slice(0, 1)}</div>}
+	                              <div className="menu-dish-body">
+	                                <div>
+	                                  <h4>{item.displayName}</h4>
+	                                  <p>{item.displayDescription}</p>
+	                                </div>
+	                                {item.ingredients?.length ? <span>{item.ingredients.map((ingredient) => ingredient.displayName).join(", ")}</span> : null}
+	                              </div>
+	                              <strong className="menu-dish-price">{item.price} {item.currency}</strong>
+	                              <div className="menu-dish-actions">
+	                                <button type="button" onClick={() => editMenuItem(item)}>{tt("restaurant.edit_dish", "Edit dish")}</button>
+	                                <button className="danger" type="button" onClick={() => void deleteMenuItem(item.id)}>{tt("restaurant.delete_dish", "Delete dish")}</button>
+	                              </div>
+	                            </article>
+	                          ))}
+	                        </div>
+	                      ) : (
+	                        <p className="menu-section-empty">{tt("restaurant.no_dishes", "No dishes in this section yet.")}</p>
+	                      )}
+	                    </article>
+	                  );
+	                })}
+	                {uncategorizedMenu.length ? (
+	                  <article className="menu-section-card">
+	                    <header className="menu-section-header">
+	                      <h3>{tt("restaurant.uncategorized", "Without section")}</h3>
+	                    </header>
+	                    <div className="menu-dish-list">
+	                      {uncategorizedMenu.map((item) => (
+	                        <article className="menu-dish-card" key={item.id}>
+	                          {item.imageUrl ? <img alt={item.displayName} className="menu-dish-image" src={item.imageUrl} /> : <div className="menu-dish-image placeholder">{item.displayName.slice(0, 1)}</div>}
+	                          <div className="menu-dish-body">
+	                            <h4>{item.displayName}</h4>
+	                            <p>{item.displayDescription}</p>
+	                            {item.ingredients?.length ? <span>{item.ingredients.map((ingredient) => ingredient.displayName).join(", ")}</span> : null}
+	                          </div>
+	                          <strong className="menu-dish-price">{item.price} {item.currency}</strong>
+	                          <div className="menu-dish-actions">
+	                            <button type="button" onClick={() => editMenuItem(item)}>{tt("restaurant.edit_dish", "Edit dish")}</button>
+	                            <button className="danger" type="button" onClick={() => void deleteMenuItem(item.id)}>{tt("restaurant.delete_dish", "Delete dish")}</button>
+	                          </div>
+	                        </article>
+	                      ))}
+	                    </div>
+	                  </article>
+	                ) : null}
+	              </div>
+	            </article>
+	          </section>
         ) : null}
 
         {activeTab === "kitchen" ? (
@@ -759,6 +997,15 @@ export default function RestaurantDashboardPage() {
 
         {activeTab === "profile" ? (
           <section className="registration-form restaurant-profile-form">
+            <div className="restaurant-logo-uploader">
+              <div className="restaurant-logo-preview">
+                {profile.logoUrl ? <img alt={profile.name} src={profile.logoUrl} /> : <strong>{profile.name.slice(0, 1) || "S"}</strong>}
+              </div>
+              <label className="file-upload-control compact">
+                {tt("restaurant.upload_logo", "Upload restaurant logo")}
+                <input type="file" accept="image/*" onChange={(event) => void handleLogoUpload(event.target.files?.[0])} />
+              </label>
+            </div>
             {(["ownerFirstName", "ownerLastName", "email", "name", "phone", "address", "country", "city"] as const).map((field) => (
               <label key={field}>
                 {profileLabels[field]}
@@ -798,4 +1045,39 @@ function searchEntries(entries: CatalogEntry[], query: string) {
   const value = query.trim();
   if (!value) return entries;
   return entries.filter((entry) => matchesEntry(entry, value));
+}
+
+function searchCurrencyCodes(query: string, language: string) {
+  const value = normalizeSearch(query);
+  if (!value) return fallbackCurrencyCodes;
+  return fallbackCurrencyCodes.filter((code) => currencySearchNames(code, language).some((name) => normalizeSearch(name).includes(value)));
+}
+
+function currencyLabel(code: string, language = "en") {
+  const name = currencyDisplayNames[code]?.[language] ?? currencyDisplayNames[code]?.en ?? currencyDisplayNames[code]?.ar;
+  return name ? `${code} - ${name}` : code;
+}
+
+function currencySearchNames(code: string, language: string) {
+  const names = currencyDisplayNames[code] ?? {};
+  return [code, names[language], names.en, names.ar, ...Object.values(names)].filter(Boolean) as string[];
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, " ");
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
 }

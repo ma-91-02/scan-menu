@@ -68,3 +68,12 @@ test("translates menu ingredient names centrally", async () => {
   assert.equal(response.status, 200);
   assert.equal(payload.data.translatedText, "بصل");
 });
+
+test("loads centralized menu sections by language", async () => {
+  const response = await fetch(`${baseUrl}/sections/ar`);
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.ok(payload.data.some((section: { id: string; displayName: string }) => section.id === "hot_drinks" && section.displayName === "مشروبات ساخنة"));
+  assert.ok(payload.data.some((section: { id: string; displayName: string }) => section.id === "grills" && section.displayName === "مشويات"));
+});
