@@ -115,7 +115,9 @@ const copy = {
     ingredientSearch: "ابحث عن مكون",
     imageUrl: "رابط صورة الطبق",
     emptySectionsTitle: "أنشئ أول قسم",
-    emptySectionsBody: "الأقسام تنظّم الأطباق قبل ظهورها للعميل. أضف مشروبات أو مشويات أو بيتزا أو حلويات أو أي قسم بلغة المطعم."
+    emptySectionsBody: "الأقسام تنظّم الأطباق قبل ظهورها للعميل. أضف مشروبات أو مشويات أو بيتزا أو حلويات أو أي قسم بلغة المطعم.",
+    deleteAccount: "حذف الحساب",
+    deleteAccountConfirm: "سيتم حذف حسابك وبيانات المطعم المرتبطة به. هل أنت متأكد؟"
   },
   en: {
     title: "Restaurant dashboard",
@@ -147,7 +149,9 @@ const copy = {
     ingredientSearch: "Search ingredient",
     imageUrl: "Dish image URL",
     emptySectionsTitle: "Create your first section",
-    emptySectionsBody: "Sections organize dishes before customers see the menu. Add drinks, grills, pizza, desserts, or any restaurant section in your own language."
+    emptySectionsBody: "Sections organize dishes before customers see the menu. Add drinks, grills, pizza, desserts, or any restaurant section in your own language.",
+    deleteAccount: "Delete account",
+    deleteAccountConfirm: "This will delete your account and linked restaurant data. Are you sure?"
   },
   ru: {
     title: "Панель ресторана",
@@ -179,7 +183,9 @@ const copy = {
     ingredientSearch: "Найти ингредиент",
     imageUrl: "Ссылка на фото блюда",
     emptySectionsTitle: "Создайте первый раздел",
-    emptySectionsBody: "Разделы упорядочивают блюда до показа меню гостям. Добавьте напитки, гриль, пиццу, десерты или любой раздел на языке ресторана."
+    emptySectionsBody: "Разделы упорядочивают блюда до показа меню гостям. Добавьте напитки, гриль, пиццу, десерты или любой раздел на языке ресторана.",
+    deleteAccount: "Удалить аккаунт",
+    deleteAccountConfirm: "Аккаунт и связанные данные ресторана будут удалены. Вы уверены?"
   },
   tr: {
     title: "Restoran paneli",
@@ -211,7 +217,9 @@ const copy = {
     ingredientSearch: "Malzeme ara",
     imageUrl: "Yemek görseli URL",
     emptySectionsTitle: "İlk bölümü oluştur",
-    emptySectionsBody: "Bölümler, müşteriler menüyü görmeden önce yemekleri düzenler. İçecek, ızgara, pizza, tatlı veya herhangi bir bölümü restoran dilinde ekleyin."
+    emptySectionsBody: "Bölümler, müşteriler menüyü görmeden önce yemekleri düzenler. İçecek, ızgara, pizza, tatlı veya herhangi bir bölümü restoran dilinde ekleyin.",
+    deleteAccount: "Hesabı sil",
+    deleteAccountConfirm: "Hesabınız ve bağlı restoran verileri silinecek. Emin misiniz?"
   }
 };
 
@@ -511,6 +519,22 @@ export default function RestaurantDashboardPage() {
     window.location.href = "/";
   }
 
+  async function deleteAccount() {
+    if (!window.confirm(tt("account.delete_confirm", t.deleteAccountConfirm))) return;
+    const sessionId = localStorage.getItem(sessionStorageKey);
+    if (!sessionId) return;
+
+    const response = await fetch(`${apiUrl}/auth/account`, {
+      method: "DELETE",
+      headers: { "x-session-id": sessionId }
+    });
+
+    if (response.ok) {
+      localStorage.removeItem(sessionStorageKey);
+      window.location.href = "/";
+    }
+  }
+
   return (
     <main className="restaurant-console" dir={["ar", "ur", "fa", "he"].includes(ownerLanguage) ? "rtl" : "ltr"}>
       <aside className="restaurant-sidebar compact-owner-sidebar">
@@ -742,6 +766,7 @@ export default function RestaurantDashboardPage() {
               </label>
             ))}
             <button className="public-button primary wide" type="button" onClick={() => void saveProfile()}>{tt("common.save", t.save)}</button>
+            <button className="danger-button wide" type="button" onClick={() => void deleteAccount()}>{tt("account.delete", t.deleteAccount)}</button>
           </section>
         ) : null}
       </section>

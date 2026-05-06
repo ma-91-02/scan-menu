@@ -142,7 +142,7 @@ export default async function PublicHomePage({ searchParams }: PublicHomePagePro
       </section>
 
       <section className="auth-section" id="login">
-        <LoginForm loginLabel={content.nav.login} />
+        <LoginForm loginLabel={content.nav.login} preferredLanguage={language} />
       </section>
 
       <section className="registration-section" id="registration">

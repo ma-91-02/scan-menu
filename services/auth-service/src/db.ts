@@ -381,6 +381,10 @@ export async function deleteSessionsForUserDb(userId: string) {
   await pool!.query("DELETE FROM scanmenu_sessions WHERE user_id = $1", [userId]);
 }
 
+export async function deleteUserDb(userId: string) {
+  await pool!.query("DELETE FROM scanmenu_users WHERE id = $1", [userId]);
+}
+
 function mapUser(row: Record<string, unknown>): AuthUserRecord {
   const linkedPermissions = row.linked_permissions ?? row.permissions;
   const linkedStaffRole = row.linked_staff_role ?? row.staff_role;

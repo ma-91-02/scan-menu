@@ -94,6 +94,9 @@ const translations = {
     termsConsent: "أوافق على شروط الاستخدام وسياسة الخصوصية",
     signedIn: "مسجل الدخول",
     signOut: "تسجيل خروج",
+    deleteAccount: "حذف الحساب",
+    deleteAccountConfirm: "سيتم حذف حسابك وطلباتك المرتبطة. هل أنت متأكد؟",
+    verifyEmail: "يجب تأكيد بريدك الإلكتروني قبل الدخول.",
     authRequired: "سجّل أو ادخل أولًا لإرسال الطلب.",
     orderNote: "ملاحظة الطلب",
     add: "إضافة",
@@ -133,6 +136,9 @@ const translations = {
     termsConsent: "I agree to the Terms of Use and Privacy Policy",
     signedIn: "Signed in",
     signOut: "Sign out",
+    deleteAccount: "Delete account",
+    deleteAccountConfirm: "This will delete your account and linked orders. Are you sure?",
+    verifyEmail: "Please verify your email before signing in.",
     authRequired: "Register or log in before ordering.",
     orderNote: "Order note",
     add: "Add",
@@ -172,6 +178,9 @@ const translations = {
     termsConsent: "Я соглашаюсь с Условиями использования и Политикой конфиденциальности",
     signedIn: "Вход выполнен",
     signOut: "Выйти",
+    deleteAccount: "Удалить аккаунт",
+    deleteAccountConfirm: "Аккаунт и связанные заказы будут удалены. Вы уверены?",
+    verifyEmail: "Подтвердите email перед входом.",
     authRequired: "Зарегистрируйтесь или войдите перед заказом.",
     orderNote: "Комментарий",
     add: "Добавить",
@@ -319,6 +328,10 @@ export default function CustomerPage() {
       const payload = await response.json();
 
       if (!response.ok || payload.data.user.role !== "customer") {
+        if (response.status === 403 && payload.code === "EMAIL_VERIFICATION_REQUIRED") {
+          window.location.href = `/verify-email?lang=${currentLanguage}&notice=required&email=${encodeURIComponent(authEmail)}`;
+          return;
+        }
         setStatus(payload.error ?? t.failed);
         return;
       }
@@ -343,6 +356,7 @@ export default function CustomerPage() {
         name: authName,
         email: authEmail,
         username: `${authEmail.split("@")[0]}-${Date.now()}`,
+        password: authPassword,
         preferredLanguage: currentLanguage,
         termsAccepted: acceptedPolicies,
         privacyAccepted: acceptedPolicies,
@@ -368,6 +382,20 @@ export default function CustomerPage() {
     localStorage.removeItem(sessionStorageKey);
     setCustomer(null);
     setStatus("");
+  }
+
+  async function deleteAccount() {
+    if (!window.confirm(t.deleteAccountConfirm)) return;
+    const sessionId = localStorage.getItem(sessionStorageKey);
+    if (!sessionId) return;
+
+    const response = await fetch(`${apiUrl}/auth/account`, {
+      method: "DELETE",
+      headers: { "x-session-id": sessionId }
+    });
+
+    if (response.ok) signOut();
+    else setStatus(t.failed);
   }
 
   function applyQrLink() {
@@ -515,7 +543,7 @@ export default function CustomerPage() {
               <input placeholder={t.name} value={authName} onChange={(event) => setAuthName(event.target.value)} />
             ) : null}
             <input placeholder={t.email} value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} />
-            {authMode === "login" ? (
+            {authMode === "login" || authMode === "register" ? (
               <input placeholder={t.password} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
             ) : null}
             {authMode === "register" ? (
@@ -648,6 +676,7 @@ export default function CustomerPage() {
                 <input value={qrInput} onChange={(event) => setQrInput(event.target.value)} placeholder="/customer?restaurantId=rst_bistro_01&table=5" />
               </label>
               <button type="button" onClick={applyQrLink}>{t.apply}</button>
+              {customer ? <button className="danger-button" type="button" onClick={() => void deleteAccount()}>{t.deleteAccount}</button> : null}
               <small>{t.scanHint}</small>
             </section>
           ) : null}

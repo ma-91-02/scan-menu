@@ -91,6 +91,8 @@ test("login fails before email verification, then verify email succeeds", async 
 
   assert.equal(blockedLogin.status, 403);
   assert.match(blockedPayload.error, /verification/i);
+  assert.equal(blockedPayload.code, "EMAIL_VERIFICATION_REQUIRED");
+  assert.equal(blockedPayload.data.requiresEmailVerification, true);
 
   const verify = await fetch(`${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`);
   const verifyPayload = await verify.json();
@@ -262,6 +264,34 @@ test("password hash is used and never returned from login", async () => {
   assert.equal(login.status, 200);
   assert.equal(payload.data.user.passwordHash, undefined);
   assert.ok(!JSON.stringify(payload).includes("password_hash"));
+});
+
+test("authenticated user can delete own account and old session stops working", async () => {
+  const email = uniqueEmail("delete-account");
+  const register = await post("/register/customer", {
+    name: "Delete Account User",
+    email,
+    password: "password123",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
+  });
+  const registerPayload = await register.json();
+  await fetch(`${baseUrl}/verify-email?token=${registerPayload.data.debug.emailVerificationToken}`);
+
+  const login = await post("/login", { identifier: email, password: "password123" });
+  const loginPayload = await login.json();
+  const sessionId = loginPayload.data.session.id;
+  const deleted = await fetch(`${baseUrl}/account`, {
+    method: "DELETE",
+    headers: { "x-session-id": sessionId }
+  });
+  const deletedPayload = await deleted.json();
+  const oldSession = await fetch(`${baseUrl}/session/${sessionId}`);
+
+  assert.equal(deleted.status, 200);
+  assert.equal(deletedPayload.data.ok, true);
+  assert.equal(oldSession.status, 401);
 });
 
 async function post(path: string, body: Record<string, unknown>) {

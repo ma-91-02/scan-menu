@@ -1071,6 +1071,36 @@ h2 {
   font-weight: 900;
 }
 
+.location-suggestion-list {
+  display: grid;
+  gap: 6px;
+  max-height: 178px;
+  overflow: auto;
+  border: 1px solid #d4e2dd;
+  border-radius: 8px;
+  padding: 6px;
+  background: #f8fbf9;
+}
+
+.location-suggestion-list button {
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #163f36;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: start;
+}
+
+.location-suggestion-list button:hover,
+.location-suggestion-list button:focus {
+  border-color: #eeab4f;
+  background: #fff7eb;
+}
+
 .auth-section button,
 .registration-section button {
   border: 0;
@@ -1100,6 +1130,23 @@ h2 {
   padding: 0;
   text-align: start;
   cursor: pointer;
+}
+
+.danger-button {
+  min-height: 46px;
+  border: 1px solid #b42318;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #b42318;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.danger-button:hover,
+.danger-button:focus {
+  background: #b42318;
+  color: #ffffff;
 }
 
 .consent-links {

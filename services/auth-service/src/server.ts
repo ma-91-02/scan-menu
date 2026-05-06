@@ -8,6 +8,7 @@ import {
   createUserDb,
   deleteSessionDb,
   deleteSessionsForUserDb,
+  deleteUserDb,
   findUserByPasswordResetTokenDb,
   findUserByVerificationTokenDb,
   findUserDb,
@@ -331,7 +332,14 @@ export function createApp() {
     }
 
     if (!user.emailVerified) {
-      res.status(403).json({ error: "Email verification is required before login" });
+      res.status(403).json({
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        error: "Email verification is required before login",
+        data: {
+          requiresEmailVerification: true,
+          email: user.email
+        }
+      });
       return;
     }
 
@@ -459,6 +467,15 @@ export function createApp() {
     const sessionId = String(req.body.sessionId ?? "");
     if (sessionId) await deleteSession(sessionId);
     res.json({ data: { ok: true } });
+  });
+
+  app.delete("/account", async (req, res) => {
+    await dbReady;
+    const actor = await requireAuth(req, res);
+    if (!actor) return;
+
+    await deleteAccount(actor.id);
+    res.json({ data: { ok: true, message: "Account deleted." } });
   });
 
   return app;
@@ -919,6 +936,26 @@ async function deleteSessionsForUser(userId: string) {
     for (const [tokenHash, session] of sessions.entries()) {
       if (session.userId === userId) sessions.delete(tokenHash);
     }
+  }
+}
+
+async function deleteAccount(userId: string) {
+  await deleteSessionsForUser(userId);
+
+  if (hasAuthDb()) {
+    await deleteUserDb(userId);
+    return;
+  }
+
+  const userIndex = users.findIndex((user) => user.id === userId);
+  if (userIndex >= 0) users.splice(userIndex, 1);
+
+  for (let index = restaurantStaff.length - 1; index >= 0; index -= 1) {
+    if (restaurantStaff[index]?.userId === userId) restaurantStaff.splice(index, 1);
+  }
+
+  for (let index = restaurants.length - 1; index >= 0; index -= 1) {
+    if (restaurants[index]?.ownerId === userId) restaurants.splice(index, 1);
   }
 }
 
