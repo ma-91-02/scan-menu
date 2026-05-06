@@ -1175,6 +1175,7 @@ h2 {
   width: 22px;
   height: 22px;
   flex: 0 0 auto;
+  accent-color: #2e5a51;
 }
 
 .consent-links {
@@ -1186,6 +1187,9 @@ h2 {
 .consent-links a {
   color: #163f36;
   font-weight: 900;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .legal-page,
