@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import locationData from "countries-states-cities";
+import type { ICountry } from "countries-states-cities";
 
 interface LanguageOption {
   code: string;
@@ -33,43 +35,95 @@ interface RegistrationFormProps {
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const languageStorageKey = "scanmenu-language";
 const sessionStorageKey = "scanmenu-session";
-const supportedCountries = [
-  { code: "ma", dialCode: "+212", cities: ["Casablanca", "Rabat", "Marrakesh", "Fes", "Tangier", "Agadir", "Meknes", "Oujda"] },
-  { code: "sa", dialCode: "+966", cities: ["Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Khobar", "Taif"] },
-  { code: "ae", dialCode: "+971", cities: ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah"] },
-  { code: "eg", dialCode: "+20", cities: ["Cairo", "Alexandria", "Giza", "Mansoura", "Tanta", "Aswan"] },
-  { code: "tr", dialCode: "+90", cities: ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa"] },
-  { code: "fr", dialCode: "+33", cities: ["Paris", "Lyon", "Marseille", "Nice", "Toulouse"] },
-  { code: "de", dialCode: "+49", cities: ["Berlin", "Munich", "Hamburg", "Frankfurt", "Cologne"] },
-  { code: "es", dialCode: "+34", cities: ["Madrid", "Barcelona", "Valencia", "Seville", "Malaga"] },
-  { code: "it", dialCode: "+39", cities: ["Rome", "Milan", "Naples", "Turin", "Florence"] },
-  { code: "us", dialCode: "+1", cities: ["New York", "Los Angeles", "Chicago", "Houston", "Miami"] }
-] as const;
 
-const countryNames: Record<string, Record<string, string>> = {
-  ar: { ma: "المغرب", sa: "السعودية", ae: "الإمارات", eg: "مصر", tr: "تركيا", fr: "فرنسا", de: "ألمانيا", es: "إسبانيا", it: "إيطاليا", us: "الولايات المتحدة" },
-  en: { ma: "Morocco", sa: "Saudi Arabia", ae: "United Arab Emirates", eg: "Egypt", tr: "Turkey", fr: "France", de: "Germany", es: "Spain", it: "Italy", us: "United States" },
-  fr: { ma: "Maroc", sa: "Arabie saoudite", ae: "Émirats arabes unis", eg: "Égypte", tr: "Turquie", fr: "France", de: "Allemagne", es: "Espagne", it: "Italie", us: "États-Unis" },
-  es: { ma: "Marruecos", sa: "Arabia Saudita", ae: "Emiratos Árabes Unidos", eg: "Egipto", tr: "Turquía", fr: "Francia", de: "Alemania", es: "España", it: "Italia", us: "Estados Unidos" },
-  de: { ma: "Marokko", sa: "Saudi-Arabien", ae: "Vereinigte Arabische Emirate", eg: "Ägypten", tr: "Türkei", fr: "Frankreich", de: "Deutschland", es: "Spanien", it: "Italien", us: "Vereinigte Staaten" },
-  tr: { ma: "Fas", sa: "Suudi Arabistan", ae: "Birleşik Arap Emirlikleri", eg: "Mısır", tr: "Türkiye", fr: "Fransa", de: "Almanya", es: "İspanya", it: "İtalya", us: "Amerika Birleşik Devletleri" },
-  ru: { ma: "Марокко", sa: "Саудовская Аравия", ae: "ОАЭ", eg: "Египет", tr: "Турция", fr: "Франция", de: "Германия", es: "Испания", it: "Италия", us: "США" }
+interface CountryOption {
+  isoCode: string;
+  name: string;
+  flag: string;
+  dialCode: string;
+}
+
+interface LocationOption {
+  value: string;
+  label: string;
+}
+
+const sourceCountries = locationData.getAllCountries();
+const allCountries = sourceCountries
+  .map((country) => ({
+    isoCode: country.iso2,
+    name: country.name,
+    flag: country.emoji,
+    dialCode: normalizeDialCode(country.phone_code)
+  }))
+  .sort((first, second) => first.name.localeCompare(second.name));
+
+const defaultCountryCode = allCountries.find((country) => country.isoCode === "MA")?.isoCode ?? allCountries[0]?.isoCode ?? "MA";
+const fallbackCountry: CountryOption = {
+  isoCode: defaultCountryCode,
+  name: "Morocco",
+  flag: "🇲🇦",
+  dialCode: "+212"
 };
 
-const cityNames: Record<string, Record<string, string>> = {
-  ar: {
-    Casablanca: "الدار البيضاء", Rabat: "الرباط", Marrakesh: "مراكش", Fes: "فاس", Tangier: "طنجة", Agadir: "أكادير", Meknes: "مكناس", Oujda: "وجدة",
-    Riyadh: "الرياض", Jeddah: "جدة", Mecca: "مكة", Medina: "المدينة", Dammam: "الدمام", Khobar: "الخبر", Taif: "الطائف",
-    Dubai: "دبي", "Abu Dhabi": "أبوظبي", Sharjah: "الشارقة", Ajman: "عجمان", "Ras Al Khaimah": "رأس الخيمة",
-    Cairo: "القاهرة", Alexandria: "الإسكندرية", Giza: "الجيزة", Mansoura: "المنصورة", Tanta: "طنطا", Aswan: "أسوان",
-    Istanbul: "إسطنبول", Ankara: "أنقرة", Izmir: "إزمير", Antalya: "أنطاليا", Bursa: "بورصة",
-    Paris: "باريس", Lyon: "ليون", Marseille: "مرسيليا", Nice: "نيس", Toulouse: "تولوز",
-    Berlin: "برلين", Munich: "ميونخ", Hamburg: "هامبورغ", Frankfurt: "فرانكفورت", Cologne: "كولونيا",
-    Madrid: "مدريد", Barcelona: "برشلونة", Valencia: "فالنسيا", Seville: "إشبيلية", Malaga: "مالقة",
-    Rome: "روما", Milan: "ميلانو", Naples: "نابولي", Turin: "تورينو", Florence: "فلورنسا",
-    "New York": "نيويورك", "Los Angeles": "لوس أنجلوس", Chicago: "شيكاغو", Houston: "هيوستن", Miami: "ميامي"
+function normalizeDialCode(phonecode: string) {
+  const trimmed = phonecode.trim();
+
+  if (!trimmed) {
+    return "";
   }
-};
+
+  return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
+}
+
+function getCountryDisplayName(language: string) {
+  try {
+    return new Intl.DisplayNames([language || "en"], { type: "region" });
+  } catch {
+    return new Intl.DisplayNames(["en"], { type: "region" });
+  }
+}
+
+function formatCountryName(country: CountryOption, language: string) {
+  const localizedName = getCountryDisplayName(language).of(country.isoCode) ?? country.name;
+  const dialCode = country.dialCode ? ` (${country.dialCode})` : "";
+
+  return `${country.flag ? `${country.flag} ` : ""}${localizedName}${dialCode}`;
+}
+
+function getLocationOptions(countryCode: string): LocationOption[] {
+  const country = getCountryByIso2(countryCode);
+  const states = country ? locationData.getStatesOfCountry(country.id) : [];
+  const cities = states.flatMap((state) =>
+    locationData.getCitiesOfState(state.id).map((city) => ({
+      value: city.name,
+      label: city.state_code ? `${city.name} (${city.state_code})` : city.name
+    }))
+  );
+
+  if (cities.length > 0) {
+    return cities.sort((first, second) => first.label.localeCompare(second.label));
+  }
+
+  const stateOptions = states
+    .map((state) => ({
+      value: state.name,
+      label: state.name
+    }))
+    .sort((first, second) => first.label.localeCompare(second.label));
+
+  if (stateOptions.length > 0) {
+    return stateOptions;
+  }
+
+  const countryName = country?.name ?? countryCode;
+
+  return [{ value: countryName, label: countryName }];
+}
+
+function getCountryByIso2(countryCode: string): ICountry | undefined {
+  return sourceCountries.find((country) => country.iso2 === countryCode);
+}
 
 const registrationCopy = {
   ar: {
@@ -242,12 +296,15 @@ export function RegistrationForm({
 }: RegistrationFormProps) {
   const [status, setStatus] = useState("");
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
-  const [countryCode, setCountryCode] = useState<(typeof supportedCountries)[number]["code"]>("ma");
-  const [city, setCity] = useState<string>(supportedCountries[0].cities[0]);
+  const [countryCode, setCountryCode] = useState(defaultCountryCode);
+  const [city, setCity] = useState("");
   const copy = registrationCopy[preferredLanguage as keyof typeof registrationCopy] ?? registrationCopy.en;
-  const selectedCountry = supportedCountries.find((country) => country.code === countryCode) ?? supportedCountries[0];
-  const countryLabel = (code: string) => countryNames[preferredLanguage]?.[code] ?? countryNames.en?.[code] ?? code.toUpperCase();
-  const cityLabel = (value: string) => cityNames[preferredLanguage]?.[value] ?? value;
+  const selectedCountry = allCountries.find((country) => country.isoCode === countryCode) ?? allCountries[0] ?? fallbackCountry;
+  const locationOptions = useMemo(() => getLocationOptions(countryCode), [countryCode]);
+
+  useEffect(() => {
+    setCity(locationOptions[0]?.value ?? "");
+  }, [locationOptions]);
 
   async function submitRegistration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -321,16 +378,13 @@ export function RegistrationForm({
             name="country"
             value={countryCode}
             onChange={(event) => {
-              const nextCountryCode = event.target.value as typeof countryCode;
-              const nextCountry = supportedCountries.find((country) => country.code === nextCountryCode) ?? supportedCountries[0];
-              setCountryCode(nextCountry.code);
-              setCity(nextCountry.cities[0]);
+              setCountryCode(event.target.value);
             }}
             required
           >
-            {supportedCountries.map((country) => (
-              <option key={country.code} value={country.code}>
-                {countryLabel(country.code)} ({country.dialCode})
+            {allCountries.map((country) => (
+              <option key={country.isoCode} value={country.isoCode}>
+                {formatCountryName(country, preferredLanguage)}
               </option>
             ))}
           </select>
@@ -338,9 +392,9 @@ export function RegistrationForm({
         <label>
           {copy.city}
           <select name="city" value={city} onChange={(event) => setCity(event.target.value)} required>
-            {selectedCountry.cities.map((cityOption) => (
-              <option key={cityOption} value={cityOption}>
-                {cityLabel(cityOption)}
+            {locationOptions.map((cityOption) => (
+              <option key={`${cityOption.value}-${cityOption.label}`} value={cityOption.value}>
+                {cityOption.label}
               </option>
             ))}
           </select>
