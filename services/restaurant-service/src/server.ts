@@ -74,6 +74,23 @@ const plans: SubscriptionPlan[] = [
   }
 ];
 
+const demoRestaurantProfiles: RestaurantProfile[] = ["r1", "r2", "r3", "r4", "r5"].map((name) => ({
+  id: `rst_${name}`,
+  name,
+  operatingLanguage: "ar",
+  currency: "USD",
+  supportedCustomerLanguages: scanMenuLanguages.map((language) => language.code),
+  status: "active",
+  ownerFirstName: name,
+  ownerLastName: "",
+  email: `${name}@scanmenu.local`,
+  phone: "",
+  address: "",
+  country: "",
+  city: "",
+  selectedPlan: "basic"
+}));
+
 const restaurants: RestaurantProfile[] = [
   {
     id: "rst_bistro_01",
@@ -90,7 +107,8 @@ const restaurants: RestaurantProfile[] = [
     country: "Russia",
     city: "Moscow",
     selectedPlan: "premium"
-  }
+  },
+  ...demoRestaurantProfiles
 ];
 
 const categories: MenuCategory[] = [];

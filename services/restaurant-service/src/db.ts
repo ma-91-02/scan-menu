@@ -116,6 +116,25 @@ export async function initRestaurantDatabase() {
       "RUB"
     ]
   );
+
+  for (const name of ["r1", "r2", "r3", "r4", "r5"]) {
+    await createRestaurantDb({
+      id: `rst_${name}`,
+      name,
+      operatingLanguage: "ar",
+      currency: "USD",
+      supportedCustomerLanguages: ["ar", "en", "ru", "tr", "fr", "es", "de", "it", "pt", "zh", "ja", "ko", "hi", "ur", "fa", "he", "id", "ms", "uk", "pl", "nl", "sv", "el", "vi", "th"],
+      status: "active",
+      ownerFirstName: name,
+      ownerLastName: "",
+      email: `${name}@scanmenu.local`,
+      phone: "",
+      address: "",
+      country: "",
+      city: "",
+      selectedPlan: "basic"
+    });
+  }
 }
 
 export async function getRestaurantsDb() {

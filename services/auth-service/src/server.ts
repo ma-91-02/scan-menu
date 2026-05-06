@@ -799,7 +799,9 @@ async function prepareSeedData() {
   if (users.length > 0) return { users, restaurants, staff: restaurantStaff };
 
   const passwordHash = await hashPassword(defaultDemoPassword);
+  const restaurantDemoPasswordHash = await hashPassword("12341234");
   const now = new Date().toISOString();
+  const demoRestaurantIds = ["r1", "r2", "r3", "r4", "r5"];
   const seedUsers: AuthUserRecord[] = [
     seedUser("usr_platform_owner", "Mohamed", "scanmenu-admin", "owner@scanmenu.local", "platform_owner", "ar", passwordHash, now),
     seedUser("usr_restaurant_owner", "Anna Petrova", "bistro-owner", "owner@bistro.local", "restaurant_owner", "ru", passwordHash, now, {
@@ -820,25 +822,47 @@ async function prepareSeedData() {
       staffRole: "cashier",
       permissions: rolePermissions.cashier
     }),
-    seedUser("usr_customer", "Omar Ali", "omar-customer", "customer@scanmenu.local", "customer", "ar", passwordHash, now)
+    seedUser("usr_customer", "Omar Ali", "omar-customer", "customer@scanmenu.local", "customer", "ar", passwordHash, now),
+    ...demoRestaurantIds.map((name) => seedUser(`usr_${name}_owner`, name, name, `${name}@scanmenu.local`, "restaurant_owner", "ar", restaurantDemoPasswordHash, now, {
+      restaurantId: `rst_${name}`,
+      restaurantName: name,
+      staffRole: "owner",
+      permissions: rolePermissions.owner
+    }))
   ];
-  const seedRestaurants: RestaurantAuthRecord[] = [{
-    id: "rst_bistro_01",
-    ownerId: "usr_restaurant_owner",
-    name: "Bistro Aurora",
-    slug: "bistro-aurora",
-    operatingLanguage: "ru",
-    country: "Russia",
-    city: "Moscow",
-    address: "Tverskaya 10",
-    phone: "+7 900 100 20 30",
-    email: "owner@bistro.local",
-    planId: "premium"
-  }];
+  const seedRestaurants: RestaurantAuthRecord[] = [
+    {
+      id: "rst_bistro_01",
+      ownerId: "usr_restaurant_owner",
+      name: "Bistro Aurora",
+      slug: "bistro-aurora",
+      operatingLanguage: "ru",
+      country: "Russia",
+      city: "Moscow",
+      address: "Tverskaya 10",
+      phone: "+7 900 100 20 30",
+      email: "owner@bistro.local",
+      planId: "premium"
+    },
+    ...demoRestaurantIds.map((name) => ({
+      id: `rst_${name}`,
+      ownerId: `usr_${name}_owner`,
+      name,
+      slug: name,
+      operatingLanguage: "ar",
+      country: "",
+      city: "",
+      address: "",
+      phone: "",
+      email: `${name}@scanmenu.local`,
+      planId: "basic"
+    }))
+  ];
   const seedStaff = [
     buildStaffLink("rst_bistro_01", "usr_restaurant_owner", "owner"),
     buildStaffLink("rst_bistro_01", "usr_staff_kitchen", "kitchen"),
-    buildStaffLink("rst_bistro_01", "usr_staff_cashier", "cashier")
+    buildStaffLink("rst_bistro_01", "usr_staff_cashier", "cashier"),
+    ...demoRestaurantIds.map((name) => buildStaffLink(`rst_${name}`, `usr_${name}_owner`, "owner"))
   ];
 
   users.push(...seedUsers);

@@ -326,7 +326,8 @@ export default function RestaurantDashboardPage() {
   const visibleIngredients = useMemo(() => searchEntries(ingredients, ingredientSearch).filter((ingredient) => !form.ingredientIds.includes(ingredient.id)).slice(0, 8), [form.ingredientIds, ingredientSearch, ingredients]);
   const selectedIngredients = ingredients.filter((ingredient) => form.ingredientIds.includes(ingredient.id));
   const uncategorizedMenu = menu.filter((item) => !item.categoryId || !categories.some((category) => category.id === item.categoryId));
-  const currencyOptions = useMemo(() => withSelectedCurrency(searchCurrencyCodes(currencySearch, ownerLanguage), restaurantCurrency), [currencySearch, ownerLanguage, restaurantCurrency]);
+  const currencyOptions = useMemo(() => searchCurrencyCodes(currencySearch, ownerLanguage), [currencySearch, ownerLanguage]);
+  const visibleCurrencyResults = useMemo(() => (currencySearch.trim() ? currencyOptions.slice(0, 10) : []), [currencyOptions, currencySearch]);
   const paymentLabel = (value?: string) => tt(`payment.${value ?? "cash"}`, value ?? "cash");
   const statusLabel = (value?: string) => tt(`status.${value ?? "pending"}`, value ?? "pending");
 
@@ -748,8 +749,17 @@ export default function RestaurantDashboardPage() {
                   value={currencySearch}
                   onChange={(event) => setCurrencySearch(event.target.value)}
                 />
+                {visibleCurrencyResults.length ? (
+                  <div className="currency-result-list">
+                    {visibleCurrencyResults.map((code) => (
+                      <button key={code} type="button" onClick={() => void updateRestaurantCurrency(code)}>
+                        {currencyLabel(code, ownerLanguage)}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <select value={restaurantCurrency} onChange={(event) => void updateRestaurantCurrency(event.target.value)}>
-                  {currencyOptions.map((code) => (
+                  {fallbackCurrencyCodes.map((code) => (
                     <option key={code} value={code}>{currencyLabel(code, ownerLanguage)}</option>
                   ))}
                 </select>
@@ -1055,10 +1065,6 @@ function searchCurrencyCodes(query: string, language: string) {
   return fallbackCurrencyCodes.filter((code) => currencySearchNames(code, language).some((name) => normalizeSearch(name).includes(value)));
 }
 
-function withSelectedCurrency(options: string[], selectedCurrency: string) {
-  return options.includes(selectedCurrency) ? options : [selectedCurrency, ...options];
-}
-
 function currencyLabel(code: string, language = "en") {
   const name = currencyDisplayNames[code]?.[language] ?? currencyDisplayNames[code]?.en ?? currencyDisplayNames[code]?.ar;
   return name ? `${code} - ${name}` : code;
@@ -1076,6 +1082,7 @@ function normalizeSearch(value: string) {
     .replace(/[إأآا]/g, "ا")
     .replace(/ى/g, "ي")
     .replace(/ة/g, "ه")
+    .replace(/\bال(?=\p{Letter})/gu, "")
     .replace(/[^\p{Letter}\p{Number}]+/gu, " ");
 }
 

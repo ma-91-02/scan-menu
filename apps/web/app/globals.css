@@ -1926,6 +1926,31 @@ h2 {
   font: inherit;
 }
 
+.currency-result-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.currency-result-list button {
+  min-height: 42px;
+  border: 1px solid #d4e2dd;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #f8fbfa;
+  color: #13251f;
+  font: inherit;
+  font-weight: 900;
+  text-align: start;
+  cursor: pointer;
+}
+
+.currency-result-list button:hover,
+.currency-result-list button:focus {
+  border-color: #3d6257;
+  background: #eef5f2;
+}
+
 .file-upload-control {
   display: grid;
   gap: 8px;
