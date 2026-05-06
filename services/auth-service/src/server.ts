@@ -112,7 +112,7 @@ export function createApp() {
 
     const existingUser = await findUserByIdentifier(input.email);
     if (existingUser && !existingUser.emailVerified) {
-      await resendVerificationForExistingUser(existingUser, res, 202);
+      await resendVerificationForExistingUser(existingUser, res, 202, input.password);
       return;
     }
 
@@ -166,7 +166,7 @@ export function createApp() {
 
     const existingUser = await findUserByIdentifier(input.email);
     if (existingUser && !existingUser.emailVerified) {
-      await resendVerificationForExistingUser(existingUser, res, 202);
+      await resendVerificationForExistingUser(existingUser, res, 202, input.password);
       return;
     }
 
@@ -327,7 +327,7 @@ export function createApp() {
 
     const user = await findUserByIdentifier(identifier);
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      res.status(401).json({ error: "Invalid login credentials" });
+      res.status(401).json({ code: "INVALID_LOGIN_CREDENTIALS", error: "Invalid login credentials" });
       return;
     }
 
@@ -495,7 +495,7 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
 
   const existingUser = await findUserByIdentifier(input.email);
   if (existingUser && !existingUser.emailVerified) {
-    await resendVerificationForExistingUser(existingUser, res, 202);
+    await resendVerificationForExistingUser(existingUser, res, 202, input.password);
     return;
   }
 
@@ -556,10 +556,11 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
   });
 }
 
-async function resendVerificationForExistingUser(user: AuthUserRecord, res: express.Response, statusCode: 200 | 202) {
+async function resendVerificationForExistingUser(user: AuthUserRecord, res: express.Response, statusCode: 200 | 202, nextPassword?: string) {
   const verificationToken = createEmailVerificationToken();
   const nextUser = await updateUser({
     ...user,
+    passwordHash: nextPassword ? await hashPassword(nextPassword) : user.passwordHash,
     emailVerificationTokenHash: hashEmailToken(verificationToken),
     emailVerificationExpiresAt: expiresIn(verificationTtlMs)
   });

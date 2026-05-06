@@ -1018,10 +1018,11 @@ h2 {
   display: grid;
   place-items: center;
   background-image:
-    linear-gradient(rgba(16, 42, 47, 0.18), rgba(16, 42, 47, 0.18)),
+    linear-gradient(rgba(16, 42, 47, 0.52), rgba(16, 42, 47, 0.52)),
     url("https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1600&q=80");
   background-size: cover;
   background-position: center;
+  padding: clamp(24px, 5vw, 72px);
 }
 
 .auth-section > div,
@@ -1029,6 +1030,20 @@ h2 {
   width: min(760px, 100%);
   display: grid;
   gap: 18px;
+}
+
+.auth-section .public-form,
+.auth-flow-page .public-form {
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 8px;
+  padding: clamp(22px, 4vw, 42px);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 70px rgba(16, 42, 47, 0.28);
+}
+
+.auth-section .public-form h2,
+.auth-flow-page .public-form h1 {
+  color: #10231f;
 }
 
 .auth-section label,
@@ -1110,7 +1125,7 @@ h2 {
 
 .form-status {
   min-height: 24px;
-  color: #2e5a51;
+  color: #163f36;
   font-weight: 800;
 }
 
@@ -1149,10 +1164,23 @@ h2 {
   color: #ffffff;
 }
 
+.registration-section .registration-consent-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.registration-consent-row input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
 .consent-links {
   display: inline-flex;
   gap: 8px;
-  margin-inline-start: 8px;
+  margin-inline-start: 4px;
 }
 
 .consent-links a {
@@ -1183,6 +1211,11 @@ h2 {
 .auth-flow-page {
   display: grid;
   place-items: center;
+  background-image:
+    linear-gradient(rgba(16, 42, 47, 0.54), rgba(16, 42, 47, 0.54)),
+    url("https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1600&q=80");
+  background-size: cover;
+  background-position: center;
 }
 
 .registration-section {

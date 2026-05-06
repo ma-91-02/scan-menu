@@ -172,6 +172,37 @@ test("registering again with an unverified email resends verification instead of
   assert.equal(payload.data.requiresEmailVerification, true);
 });
 
+test("registering again with an unverified email updates the pending password", async () => {
+  const email = uniqueEmail("repeat-password");
+  const first = await post("/register/customer", {
+    name: "Repeat Password User",
+    email,
+    password: "old-password",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
+  });
+  assert.equal(first.status, 201);
+
+  const second = await post("/register/customer", {
+    name: "Repeat Password User",
+    email,
+    password: "new-password",
+    preferredLanguage: "en",
+    acceptedTerms: true,
+    acceptedPrivacy: true
+  });
+  const secondPayload = await second.json();
+  await fetch(`${baseUrl}/verify-email?token=${secondPayload.data.debug.emailVerificationToken}`);
+
+  const oldLogin = await post("/login", { identifier: email, password: "old-password" });
+  const newLogin = await post("/login", { identifier: email, password: "new-password" });
+
+  assert.equal(second.status, 202);
+  assert.equal(oldLogin.status, 401);
+  assert.equal(newLogin.status, 200);
+});
+
 test("forgot password creates reset token and reset changes password", async () => {
   const email = uniqueEmail("reset");
   const register = await post("/register/customer", {

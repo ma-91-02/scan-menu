@@ -49,6 +49,8 @@ interface LocationOption {
   label: string;
 }
 
+type LocationTranslations = Record<string, Record<string, string>>;
+
 const sourceCountries = locationData.getAllCountries();
 const allCountries = sourceCountries
   .map((country) => ({
@@ -101,13 +103,78 @@ function countryMatches(country: CountryOption, language: string, query: string)
     .some((item) => item.toLowerCase().includes(value));
 }
 
-function getLocationOptions(countryCode: string): LocationOption[] {
+const cityTranslationOverrides: Record<string, LocationTranslations> = {
+  MA: {
+    Agadir: { ar: "أكادير", fr: "Agadir" },
+    Casablanca: { ar: "الدار البيضاء", fr: "Casablanca" },
+    Fes: { ar: "فاس", fr: "Fès" },
+    Marrakesh: { ar: "مراكش", fr: "Marrakech" },
+    Meknes: { ar: "مكناس", fr: "Meknès" },
+    Oujda: { ar: "وجدة", fr: "Oujda" },
+    Rabat: { ar: "الرباط", fr: "Rabat" },
+    Tangier: { ar: "طنجة", fr: "Tanger" },
+    Tetouan: { ar: "تطوان", fr: "Tétouan" }
+  },
+  SA: {
+    Riyadh: { ar: "الرياض" },
+    Jeddah: { ar: "جدة" },
+    Mecca: { ar: "مكة" },
+    Medina: { ar: "المدينة المنورة" },
+    Dammam: { ar: "الدمام" },
+    Taif: { ar: "الطائف" },
+    Tabuk: { ar: "تبوك" }
+  },
+  AE: {
+    Dubai: { ar: "دبي" },
+    "Abu Dhabi": { ar: "أبوظبي" },
+    Sharjah: { ar: "الشارقة" },
+    Ajman: { ar: "عجمان" },
+    "Ras Al Khaimah": { ar: "رأس الخيمة" }
+  },
+  RU: {
+    Moscow: { ru: "Москва" },
+    "Saint Petersburg": { ru: "Санкт-Петербург" },
+    Kazan: { ru: "Казань" },
+    Sochi: { ru: "Сочи" }
+  },
+  TR: {
+    Istanbul: { tr: "İstanbul" },
+    Ankara: { tr: "Ankara" },
+    Izmir: { tr: "İzmir" },
+    Antalya: { tr: "Antalya" },
+    Bursa: { tr: "Bursa" }
+  },
+  FR: {
+    Paris: { fr: "Paris" },
+    Lyon: { fr: "Lyon" },
+    Marseille: { fr: "Marseille" },
+    Nice: { fr: "Nice" },
+    Toulouse: { fr: "Toulouse" }
+  },
+  DE: {
+    Munich: { de: "München" },
+    Cologne: { de: "Köln" },
+    Nuremberg: { de: "Nürnberg" }
+  },
+  ES: {
+    Seville: { es: "Sevilla" },
+    "A Coruna": { es: "A Coruña" }
+  }
+};
+
+function localizeLocationName(countryCode: string, name: string, language: string) {
+  return cityTranslationOverrides[countryCode]?.[name]?.[language] ?? name;
+}
+
+function getLocationOptions(countryCode: string, language: string): LocationOption[] {
   const country = getCountryByIso2(countryCode);
   const states = country ? locationData.getStatesOfCountry(country.id) : [];
   const cities = states.flatMap((state) =>
     locationData.getCitiesOfState(state.id).map((city) => ({
       value: city.name,
-      label: city.state_code ? `${city.name} (${city.state_code})` : city.name
+      label: city.state_code
+        ? `${localizeLocationName(countryCode, city.name, language)} (${state.state_code})`
+        : localizeLocationName(countryCode, city.name, language)
     }))
   );
 
@@ -118,7 +185,7 @@ function getLocationOptions(countryCode: string): LocationOption[] {
   const stateOptions = states
     .map((state) => ({
       value: state.name,
-      label: state.name
+      label: localizeLocationName(countryCode, state.name, language)
     }))
     .sort((first, second) => first.label.localeCompare(second.label));
 
@@ -137,25 +204,25 @@ function getCountryByIso2(countryCode: string): ICountry | undefined {
 
 const registrationCopy = {
   ar: {
-    firstName: "الاسم الأول", lastName: "اسم العائلة", restaurantName: "اسم المطعم", username: "اسم المستخدم", country: "الدولة", city: "المدينة / المحافظة", address: "العنوان", phone: "رقم الهاتف", email: "البريد الإلكتروني", password: "كلمة المرور", confirmPassword: "تأكيد كلمة المرور", selectCountry: "اكتب اسم الدولة للبحث", selectCity: "اكتب اسم المدينة أو المحافظة للبحث", consent: "أوافق على شروط الاستخدام وسياسة الخصوصية", terms: "الشروط", privacy: "الخصوصية", creating: "جاري إنشاء الحساب...", mismatch: "كلمتا المرور غير متطابقتين", created: "تم إنشاء الحساب. يرجى فحص بريدك لتأكيد الحساب قبل تسجيل الدخول.", resent: "تم إرسال رابط التحقق مرة أخرى. يرجى فحص بريدك.", failed: "فشل التسجيل"
+    firstName: "الاسم الأول", lastName: "اسم العائلة", restaurantName: "اسم المطعم", username: "اسم المستخدم", country: "الدولة", city: "المدينة / المحافظة", address: "العنوان", phone: "رقم الهاتف", email: "البريد الإلكتروني", password: "كلمة المرور", confirmPassword: "تأكيد كلمة المرور", selectCountry: "اكتب اسم الدولة للبحث", selectCity: "اكتب اسم المدينة أو المحافظة للبحث", consent: "أوافق على شروط الاستخدام وسياسة الخصوصية", terms: "الشروط", privacy: "الخصوصية", creating: "جاري إنشاء الحساب...", mismatch: "كلمتا المرور غير متطابقتين", created: "تم إنشاء الحساب. يرجى فحص بريدك لتأكيد الحساب قبل تسجيل الدخول.", resent: "تم إرسال رابط التحقق مرة أخرى. يرجى فحص بريدك.", failed: "فشل التسجيل", submitRestaurant: "تسجيل مطعمك"
   },
   en: {
-    firstName: "First name", lastName: "Last name", restaurantName: "Restaurant name", username: "Username", country: "Country", city: "City / province", address: "Address", phone: "Phone number", email: "Email", password: "Password", confirmPassword: "Confirm password", selectCountry: "Type country name to search", selectCity: "Type city or province to search", consent: "I agree to the Terms of Use and Privacy Policy", terms: "Terms", privacy: "Privacy", creating: "Creating account...", mismatch: "Passwords do not match", created: "Account created. Please check your email to verify the account before signing in.", resent: "A verification link was sent again. Please check your email.", failed: "Registration failed"
+    firstName: "First name", lastName: "Last name", restaurantName: "Restaurant name", username: "Username", country: "Country", city: "City / province", address: "Address", phone: "Phone number", email: "Email", password: "Password", confirmPassword: "Confirm password", selectCountry: "Type country name to search", selectCity: "Type city or province to search", consent: "I agree to the Terms of Use and Privacy Policy", terms: "Terms", privacy: "Privacy", creating: "Creating account...", mismatch: "Passwords do not match", created: "Account created. Please check your email to verify the account before signing in.", resent: "A verification link was sent again. Please check your email.", failed: "Registration failed", submitRestaurant: "Register your restaurant"
   },
   ru: {
-    firstName: "Имя", lastName: "Фамилия", restaurantName: "Название ресторана", username: "Имя пользователя", country: "Страна", city: "Город / регион", address: "Адрес", phone: "Телефон", email: "Email", password: "Пароль", confirmPassword: "Подтвердите пароль", selectCountry: "Введите страну для поиска", selectCity: "Введите город или регион для поиска", consent: "Я принимаю Условия использования и Политику конфиденциальности", terms: "Условия", privacy: "Конфиденциальность", creating: "Создание аккаунта...", mismatch: "Пароли не совпадают", created: "Аккаунт создан. Проверьте email для подтверждения.", resent: "Ссылка подтверждения отправлена повторно.", failed: "Регистрация не удалась"
+    firstName: "Имя", lastName: "Фамилия", restaurantName: "Название ресторана", username: "Имя пользователя", country: "Страна", city: "Город / регион", address: "Адрес", phone: "Телефон", email: "Email", password: "Пароль", confirmPassword: "Подтвердите пароль", selectCountry: "Введите страну для поиска", selectCity: "Введите город или регион для поиска", consent: "Я принимаю Условия использования и Политику конфиденциальности", terms: "Условия", privacy: "Конфиденциальность", creating: "Создание аккаунта...", mismatch: "Пароли не совпадают", created: "Аккаунт создан. Проверьте email для подтверждения.", resent: "Ссылка подтверждения отправлена повторно.", failed: "Регистрация не удалась", submitRestaurant: "Зарегистрировать ресторан"
   },
   tr: {
-    firstName: "Ad", lastName: "Soyad", restaurantName: "Restoran adı", username: "Kullanıcı adı", country: "Ülke", city: "Şehir / il", address: "Adres", phone: "Telefon numarası", email: "E-posta", password: "Şifre", confirmPassword: "Şifreyi onayla", selectCountry: "Ülke seç", selectCity: "Şehir veya il seç", consent: "Kullanım Şartları ve Gizlilik Politikasını kabul ediyorum", terms: "Şartlar", privacy: "Gizlilik", creating: "Hesap oluşturuluyor...", mismatch: "Şifreler eşleşmiyor", created: "Hesap oluşturuldu. Giriş yapmadan önce e-postanızı doğrulayın.", resent: "Doğrulama bağlantısı tekrar gönderildi.", failed: "Kayıt başarısız"
+    firstName: "Ad", lastName: "Soyad", restaurantName: "Restoran adı", username: "Kullanıcı adı", country: "Ülke", city: "Şehir / il", address: "Adres", phone: "Telefon numarası", email: "E-posta", password: "Şifre", confirmPassword: "Şifreyi onayla", selectCountry: "Ülke seç", selectCity: "Şehir veya il seç", consent: "Kullanım Şartları ve Gizlilik Politikasını kabul ediyorum", terms: "Şartlar", privacy: "Gizlilik", creating: "Hesap oluşturuluyor...", mismatch: "Şifreler eşleşmiyor", created: "Hesap oluşturuldu. Giriş yapmadan önce e-postanızı doğrulayın.", resent: "Doğrulama bağlantısı tekrar gönderildi.", failed: "Kayıt başarısız", submitRestaurant: "Restoranını kaydet"
   },
   fr: {
-    firstName: "Prénom", lastName: "Nom", restaurantName: "Nom du restaurant", username: "Nom d'utilisateur", country: "Pays", city: "Ville / province", address: "Adresse", phone: "Téléphone", email: "Email", password: "Mot de passe", confirmPassword: "Confirmer le mot de passe", selectCountry: "Choisir le pays", selectCity: "Choisir la ville ou province", consent: "J'accepte les Conditions d'utilisation et la Politique de confidentialité", terms: "Conditions", privacy: "Confidentialité", creating: "Création du compte...", mismatch: "Les mots de passe ne correspondent pas", created: "Compte créé. Vérifiez votre email avant de vous connecter.", resent: "Un nouveau lien de vérification a été envoyé.", failed: "Échec de l'inscription"
+    firstName: "Prénom", lastName: "Nom", restaurantName: "Nom du restaurant", username: "Nom d'utilisateur", country: "Pays", city: "Ville / province", address: "Adresse", phone: "Téléphone", email: "Email", password: "Mot de passe", confirmPassword: "Confirmer le mot de passe", selectCountry: "Choisir le pays", selectCity: "Choisir la ville ou province", consent: "J'accepte les Conditions d'utilisation et la Politique de confidentialité", terms: "Conditions", privacy: "Confidentialité", creating: "Création du compte...", mismatch: "Les mots de passe ne correspondent pas", created: "Compte créé. Vérifiez votre email avant de vous connecter.", resent: "Un nouveau lien de vérification a été envoyé.", failed: "Échec de l'inscription", submitRestaurant: "Inscrire votre restaurant"
   },
   es: {
-    firstName: "Nombre", lastName: "Apellido", restaurantName: "Nombre del restaurante", username: "Usuario", country: "País", city: "Ciudad / provincia", address: "Dirección", phone: "Teléfono", email: "Email", password: "Contraseña", confirmPassword: "Confirmar contraseña", selectCountry: "Selecciona país", selectCity: "Selecciona ciudad o provincia", consent: "Acepto los Términos de uso y la Política de privacidad", terms: "Términos", privacy: "Privacidad", creating: "Creando cuenta...", mismatch: "Las contraseñas no coinciden", created: "Cuenta creada. Revisa tu email para verificarla.", resent: "Se envió nuevamente el enlace de verificación.", failed: "Registro fallido"
+    firstName: "Nombre", lastName: "Apellido", restaurantName: "Nombre del restaurante", username: "Usuario", country: "País", city: "Ciudad / provincia", address: "Dirección", phone: "Teléfono", email: "Email", password: "Contraseña", confirmPassword: "Confirmar contraseña", selectCountry: "Selecciona país", selectCity: "Selecciona ciudad o provincia", consent: "Acepto los Términos de uso y la Política de privacidad", terms: "Términos", privacy: "Privacidad", creating: "Creando cuenta...", mismatch: "Las contraseñas no coinciden", created: "Cuenta creada. Revisa tu email para verificarla.", resent: "Se envió nuevamente el enlace de verificación.", failed: "Registro fallido", submitRestaurant: "Registrar tu restaurante"
   },
   de: {
-    firstName: "Vorname", lastName: "Nachname", restaurantName: "Restaurantname", username: "Benutzername", country: "Land", city: "Stadt / Region", address: "Adresse", phone: "Telefonnummer", email: "E-Mail", password: "Passwort", confirmPassword: "Passwort bestätigen", selectCountry: "Land auswählen", selectCity: "Stadt oder Region auswählen", consent: "Ich stimme den Nutzungsbedingungen und der Datenschutzerklärung zu", terms: "Bedingungen", privacy: "Datenschutz", creating: "Konto wird erstellt...", mismatch: "Passwörter stimmen nicht überein", created: "Konto erstellt. Bitte bestätigen Sie Ihre E-Mail.", resent: "Der Bestätigungslink wurde erneut gesendet.", failed: "Registrierung fehlgeschlagen"
+    firstName: "Vorname", lastName: "Nachname", restaurantName: "Restaurantname", username: "Benutzername", country: "Land", city: "Stadt / Region", address: "Adresse", phone: "Telefonnummer", email: "E-Mail", password: "Passwort", confirmPassword: "Passwort bestätigen", selectCountry: "Land auswählen", selectCity: "Stadt oder Region auswählen", consent: "Ich stimme den Nutzungsbedingungen und der Datenschutzerklärung zu", terms: "Bedingungen", privacy: "Datenschutz", creating: "Konto wird erstellt...", mismatch: "Passwörter stimmen nicht überein", created: "Konto erstellt. Bitte bestätigen Sie Ihre E-Mail.", resent: "Der Bestätigungslink wurde erneut gesendet.", failed: "Registrierung fehlgeschlagen", submitRestaurant: "Restaurant registrieren"
   }
 } as const;
 
@@ -425,7 +492,7 @@ export function RegistrationForm({
   const [activeLocationSearch, setActiveLocationSearch] = useState<"country" | "city" | null>(null);
   const copy = registrationCopy[preferredLanguage as keyof typeof registrationCopy] ?? registrationCopy.en;
   const selectedCountry = allCountries.find((country) => country.isoCode === countryCode) ?? allCountries[0] ?? fallbackCountry;
-  const locationOptions = useMemo(() => getLocationOptions(countryCode), [countryCode]);
+  const locationOptions = useMemo(() => getLocationOptions(countryCode, preferredLanguage), [countryCode, preferredLanguage]);
   const countrySuggestions = useMemo(
     () => allCountries.filter((country) => countryMatches(country, preferredLanguage, countrySearch)).slice(0, 10),
     [countrySearch, preferredLanguage]
@@ -525,7 +592,7 @@ export function RegistrationForm({
       <div className="registration-heading">
         <h2>{registrationLabel}</h2>
         <button className="public-button primary" data-testid="registration-submit-top" type="submit">
-          {restaurantLabel}
+          {copy.submitRestaurant ?? restaurantLabel}
         </button>
       </div>
       <div className="registration-grid">
@@ -633,7 +700,7 @@ export function RegistrationForm({
         </span>
       </label>
       <button className="public-button primary wide" type="submit">
-        {restaurantLabel}
+        {copy.submitRestaurant ?? restaurantLabel}
       </button>
       <p className="form-status">{status}</p>
     </form>

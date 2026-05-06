@@ -9,6 +9,16 @@ ARG SERVICE_URL_WEB
 ARG SERVICE_FQDN_WEB
 ARG SERVICE_URL_API_GATEWAY
 ARG SERVICE_FQDN_API_GATEWAY
+ARG AUTH_TOKEN_SECRET
+ARG SESSION_SECRET
+ARG SMTP_HOST
+ARG SMTP_PORT
+ARG SMTP_SECURE
+ARG SMTP_USER
+ARG SMTP_PASSWORD
+ARG SMTP_FROM
+ARG PUBLIC_WEB_URL
+ARG PUBLIC_API_URL
 ARG COOLIFY_BUILD_SECRETS_HASH
 ARG SERVICE_WORKSPACE
 ARG NEXT_PUBLIC_API_URL
@@ -16,6 +26,9 @@ ARG WEB_PUBLIC_API_URL
 
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV WEB_PUBLIC_API_URL=${WEB_PUBLIC_API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NPM_CONFIG_AUDIT=false
+ENV NPM_CONFIG_FUND=false
 
 COPY package*.json ./
 COPY tsconfig.base.json ./
@@ -23,8 +36,9 @@ COPY apps ./apps
 COPY services ./services
 COPY packages ./packages
 
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 RUN npm run build -w @scanmenu/shared
 RUN if [ -n "$SERVICE_WORKSPACE" ]; then npm run build -w "$SERVICE_WORKSPACE"; else npm run build; fi
+RUN npm prune --omit=dev --no-audit --no-fund && npm cache clean --force
 
 CMD ["npm", "run", "start", "-w", "@scanmenu/api-gateway"]
