@@ -95,6 +95,14 @@ export async function updateOrderDb(order: Order) {
   return result.rows[0] ? mapOrder(result.rows[0]) : undefined;
 }
 
+export async function deleteOrdersByRestaurantDb(restaurantId: string) {
+  await pool!.query("DELETE FROM scanmenu_orders WHERE restaurant_id = $1", [restaurantId]);
+}
+
+export async function deleteOrdersByCustomerDb(customerId: string) {
+  await pool!.query("DELETE FROM scanmenu_orders WHERE customer_id = $1", [customerId]);
+}
+
 function mapMenuItem(row: Record<string, unknown>): MenuItem {
   return {
     id: String(row.id),

@@ -7,6 +7,7 @@ import {
   createSessionDb,
   createUserDb,
   deleteSessionDb,
+  deleteRestaurantUsersDb,
   deleteSessionsForUserDb,
   deleteUserDb,
   findUserByPasswordResetTokenDb,
@@ -45,6 +46,8 @@ const verificationTtlMs = 1000 * 60 * 60 * 24;
 const passwordResetTtlMs = 1000 * 60 * 30;
 const sessionTtlMs = 1000 * 60 * 60 * 8;
 const restaurantRoles = ["owner", "manager", "cashier", "kitchen", "waiter", "viewer"] as const;
+const restaurantServiceUrl = process.env.RESTAURANT_SERVICE_URL ?? "http://localhost:4102";
+const orderServiceUrl = process.env.ORDER_SERVICE_URL ?? "http://localhost:4103";
 
 const rolePermissions: Record<StaffRole, string[]> = {
   owner: ["*"],
@@ -212,6 +215,7 @@ export function createApp() {
     await saveUser(user);
     await saveRestaurant(restaurant);
     await saveStaff(staff);
+    await syncRestaurantProfile(restaurant, user);
     const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
     res.status(201).json({
@@ -541,6 +545,7 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
   await saveUser(user);
   await saveRestaurant(restaurant);
   await saveStaff(staff);
+  await syncRestaurantProfile(restaurant, user);
   const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
 
   res.status(201).json({
@@ -941,22 +946,91 @@ async function deleteSessionsForUser(userId: string) {
 }
 
 async function deleteAccount(userId: string) {
+  const user = await findUserById(userId);
   await deleteSessionsForUser(userId);
+  await deleteLinkedOrders(user);
 
   if (hasAuthDb()) {
+    if (user?.role === "restaurant_owner" && user.restaurantId) {
+      await deleteRestaurantUsersDb(user.restaurantId, user.id);
+    }
     await deleteUserDb(userId);
+    await deleteRestaurantProfile(user);
     return;
   }
 
-  const userIndex = users.findIndex((user) => user.id === userId);
+  if (user?.role === "restaurant_owner" && user.restaurantId) {
+    for (let index = users.length - 1; index >= 0; index -= 1) {
+      if (users[index]?.restaurantId === user.restaurantId && users[index]?.id !== user.id) users.splice(index, 1);
+    }
+  }
+
+  const userIndex = users.findIndex((entry) => entry.id === userId);
   if (userIndex >= 0) users.splice(userIndex, 1);
 
   for (let index = restaurantStaff.length - 1; index >= 0; index -= 1) {
-    if (restaurantStaff[index]?.userId === userId) restaurantStaff.splice(index, 1);
+    if (restaurantStaff[index]?.userId === userId || (user?.restaurantId && restaurantStaff[index]?.restaurantId === user.restaurantId)) restaurantStaff.splice(index, 1);
   }
 
   for (let index = restaurants.length - 1; index >= 0; index -= 1) {
     if (restaurants[index]?.ownerId === userId) restaurants.splice(index, 1);
+  }
+
+  await deleteRestaurantProfile(user);
+}
+
+async function syncRestaurantProfile(restaurant: RestaurantAuthRecord, owner: AuthUserRecord) {
+  const [ownerFirstName, ...lastNameParts] = owner.name.split(/\s+/).filter(Boolean);
+  await fetch(`${restaurantServiceUrl}/${encodeURIComponent(restaurant.id)}`, {
+    method: "GET"
+  }).catch(() => undefined);
+  await fetch(`${restaurantServiceUrl}/${encodeURIComponent(restaurant.id)}/profile`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ownerFirstName: ownerFirstName ?? owner.name,
+      ownerLastName: lastNameParts.join(" "),
+      email: owner.email,
+      restaurantName: restaurant.name,
+      phone: restaurant.phone,
+      address: restaurant.address,
+      country: restaurant.country,
+      city: restaurant.city,
+      currency: "USD"
+    })
+  }).catch((error) => {
+    console.warn("Could not sync restaurant profile", error);
+  });
+}
+
+async function deleteRestaurantProfile(user?: AuthUserRecord) {
+  if (!user?.restaurantId || user.role !== "restaurant_owner") return;
+
+  await fetch(`${restaurantServiceUrl}/${encodeURIComponent(user.restaurantId)}`, {
+    method: "DELETE"
+  }).catch((error) => {
+    console.warn("Could not delete restaurant profile", error);
+  });
+}
+
+async function deleteLinkedOrders(user?: AuthUserRecord) {
+  if (!user) return;
+
+  if (user.role === "restaurant_owner" && user.restaurantId) {
+    await fetch(`${orderServiceUrl}/restaurants/${encodeURIComponent(user.restaurantId)}`, {
+      method: "DELETE"
+    }).catch((error) => {
+      console.warn("Could not delete restaurant orders", error);
+    });
+    return;
+  }
+
+  if (user.role === "customer") {
+    await fetch(`${orderServiceUrl}/customers/${encodeURIComponent(user.id)}`, {
+      method: "DELETE"
+    }).catch((error) => {
+      console.warn("Could not delete customer orders", error);
+    });
   }
 }
 

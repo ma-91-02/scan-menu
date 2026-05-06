@@ -4,6 +4,8 @@ import type { LanguageCode, LocalizedText, MenuItem, Order, OrderLine, Restauran
 import { ingredientTaxonomy, pickCatalogTranslation, pickLocalizedText } from "@scanmenu/shared";
 import {
   createOrderDb,
+  deleteOrdersByCustomerDb,
+  deleteOrdersByRestaurantDb,
   getMenuItemsDb,
   getOrdersDb,
   getRestaurantLanguageDb,
@@ -130,6 +132,32 @@ export function createApp(options: OrderServiceOptions = {}) {
   app.get("/", async (req, res) => {
     await dbReady;
     res.json({ data: await getLocalizedOrders(req.query) });
+  });
+
+  app.delete("/restaurants/:restaurantId", async (req, res) => {
+    await dbReady;
+    if (hasOrderDb()) {
+      await deleteOrdersByRestaurantDb(req.params.restaurantId);
+    } else {
+      for (let index = orders.length - 1; index >= 0; index -= 1) {
+        if (orders[index]?.restaurantId === req.params.restaurantId) orders.splice(index, 1);
+      }
+    }
+    await broadcastOrders();
+    res.json({ data: { ok: true } });
+  });
+
+  app.delete("/customers/:customerId", async (req, res) => {
+    await dbReady;
+    if (hasOrderDb()) {
+      await deleteOrdersByCustomerDb(req.params.customerId);
+    } else {
+      for (let index = orders.length - 1; index >= 0; index -= 1) {
+        if (orders[index]?.customerId === req.params.customerId) orders.splice(index, 1);
+      }
+    }
+    await broadcastOrders();
+    res.json({ data: { ok: true } });
   });
 
   app.post("/", async (req, res) => {

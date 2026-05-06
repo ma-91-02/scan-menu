@@ -9,6 +9,7 @@ import {
   createTableDb,
   deleteCategoryDb,
   deleteMenuItemDb,
+  deleteRestaurantDb,
   getCategoriesDb,
   getMenuItemsDb,
   getRestaurantDb,
@@ -129,6 +130,26 @@ app.get("/:restaurantId", async (req, res) => {
   await dbReady;
   const restaurant = await loadOrCreateRestaurant(req.params.restaurantId);
   res.json({ data: restaurant });
+});
+
+app.delete("/:restaurantId", async (req, res) => {
+  await dbReady;
+  if (hasRestaurantDb()) {
+    await deleteRestaurantDb(req.params.restaurantId);
+  } else {
+    const index = restaurants.findIndex((item) => item.id === req.params.restaurantId);
+    if (index >= 0) restaurants.splice(index, 1);
+    for (let itemIndex = menuItems.length - 1; itemIndex >= 0; itemIndex -= 1) {
+      if (menuItems[itemIndex]?.restaurantId === req.params.restaurantId) menuItems.splice(itemIndex, 1);
+    }
+    for (let categoryIndex = categories.length - 1; categoryIndex >= 0; categoryIndex -= 1) {
+      if (categories[categoryIndex]?.restaurantId === req.params.restaurantId) categories.splice(categoryIndex, 1);
+    }
+    for (let tableIndex = tables.length - 1; tableIndex >= 0; tableIndex -= 1) {
+      if (tables[tableIndex]?.restaurantId === req.params.restaurantId) tables.splice(tableIndex, 1);
+    }
+  }
+  res.json({ data: { ok: true } });
 });
 
 app.patch("/:restaurantId/profile", async (req, res) => {

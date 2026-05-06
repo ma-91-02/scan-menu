@@ -27,6 +27,8 @@ services:
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?AUTH_TOKEN_SECRET is required}
       SESSION_SECRET: ${SESSION_SECRET:-}
       REDIS_URL: redis://redis:6379
+      RESTAURANT_SERVICE_URL: http://restaurant-service:4102
+      ORDER_SERVICE_URL: http://order-service:4103
       SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_SECURE: ${SMTP_SECURE:-true}

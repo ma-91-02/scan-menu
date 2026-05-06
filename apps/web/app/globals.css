@@ -1037,7 +1037,7 @@ h2 {
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 8px;
   padding: clamp(22px, 4vw, 42px);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 24px 70px rgba(16, 42, 47, 0.28);
 }
 
@@ -1127,6 +1127,19 @@ h2 {
   min-height: 24px;
   color: #163f36;
   font-weight: 800;
+}
+
+.auth-flow-page .form-status {
+  color: #10231f;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.6;
+}
+
+.auth-flow-page .public-button.secondary {
+  border-color: #41675e;
+  background: #ffffff;
+  color: #163f36;
+  text-align: center;
 }
 
 .auth-inline-link {

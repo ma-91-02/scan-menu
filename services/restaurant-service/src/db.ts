@@ -134,7 +134,22 @@ export async function createRestaurantDb(entry: RestaurantRecord) {
       id, name, operating_language, default_currency, logo_url, supported_customer_languages, status,
       owner_first_name, owner_last_name, email, phone, address, country, city, selected_plan
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-    ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name,
+      operating_language = EXCLUDED.operating_language,
+      default_currency = EXCLUDED.default_currency,
+      logo_url = EXCLUDED.logo_url,
+      supported_customer_languages = EXCLUDED.supported_customer_languages,
+      status = EXCLUDED.status,
+      owner_first_name = EXCLUDED.owner_first_name,
+      owner_last_name = EXCLUDED.owner_last_name,
+      email = EXCLUDED.email,
+      phone = EXCLUDED.phone,
+      address = EXCLUDED.address,
+      country = EXCLUDED.country,
+      city = EXCLUDED.city,
+      selected_plan = EXCLUDED.selected_plan,
+      updated_at = now()
     RETURNING *`,
     [
       entry.id,
@@ -224,6 +239,10 @@ export async function updateCategoryDb(entry: MenuCategory) {
 
 export async function deleteCategoryDb(restaurantId: string, categoryId: string) {
   await pool!.query("DELETE FROM scanmenu_menu_categories WHERE id = $1 AND restaurant_id = $2", [categoryId, restaurantId]);
+}
+
+export async function deleteRestaurantDb(restaurantId: string) {
+  await pool!.query("DELETE FROM scanmenu_restaurants WHERE id = $1", [restaurantId]);
 }
 
 export async function getMenuItemsDb(restaurantId: string) {

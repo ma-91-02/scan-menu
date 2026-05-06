@@ -111,3 +111,14 @@ test("updates cashier payment status", async () => {
   assert.equal(payload.data.paymentMethod, "card");
   assert.equal(payload.data.paymentStatus, "paid");
 });
+
+test("deletes orders for a removed restaurant", async () => {
+  const deleteResponse = await fetch(`${orderUrl}/restaurants/rst_bistro_01`, { method: "DELETE" });
+  const deletePayload = await deleteResponse.json();
+  const listResponse = await fetch(`${orderUrl}/?restaurantId=rst_bistro_01`);
+  const listPayload = await listResponse.json();
+
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deletePayload.data.ok, true);
+  assert.equal(listPayload.data.length, 0);
+});

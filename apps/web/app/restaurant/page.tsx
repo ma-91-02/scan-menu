@@ -326,7 +326,7 @@ export default function RestaurantDashboardPage() {
   const visibleIngredients = useMemo(() => searchEntries(ingredients, ingredientSearch).filter((ingredient) => !form.ingredientIds.includes(ingredient.id)).slice(0, 8), [form.ingredientIds, ingredientSearch, ingredients]);
   const selectedIngredients = ingredients.filter((ingredient) => form.ingredientIds.includes(ingredient.id));
   const uncategorizedMenu = menu.filter((item) => !item.categoryId || !categories.some((category) => category.id === item.categoryId));
-  const currencyOptions = useMemo(() => searchCurrencyCodes(currencySearch, ownerLanguage), [currencySearch, ownerLanguage]);
+  const currencyOptions = useMemo(() => withSelectedCurrency(searchCurrencyCodes(currencySearch, ownerLanguage), restaurantCurrency), [currencySearch, ownerLanguage, restaurantCurrency]);
   const paymentLabel = (value?: string) => tt(`payment.${value ?? "cash"}`, value ?? "cash");
   const statusLabel = (value?: string) => tt(`status.${value ?? "pending"}`, value ?? "pending");
 
@@ -362,8 +362,9 @@ export default function RestaurantDashboardPage() {
 
   async function loadBootstrap() {
     const session = await loadSession();
-    const nextRestaurantId = session?.user?.restaurantId ? String(session.user.restaurantId) : fallbackRestaurantId;
-    const nextRole = session?.user?.staffRole ?? session?.user?.role;
+    const sessionUser = session?.data?.user;
+    const nextRestaurantId = sessionUser?.restaurantId ? String(sessionUser.restaurantId) : fallbackRestaurantId;
+    const nextRole = sessionUser?.staffRole ?? sessionUser?.role;
     setRestaurantId(nextRestaurantId);
     if (nextRole) setRole(String(nextRole));
 
@@ -453,6 +454,7 @@ export default function RestaurantDashboardPage() {
 
   async function updateRestaurantCurrency(nextCurrency: string) {
     setRestaurantCurrency(nextCurrency);
+    setCurrencySearch("");
     const response = await fetch(`${apiUrl}/restaurants/${restaurantId}/profile`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -1051,6 +1053,10 @@ function searchCurrencyCodes(query: string, language: string) {
   const value = normalizeSearch(query);
   if (!value) return fallbackCurrencyCodes;
   return fallbackCurrencyCodes.filter((code) => currencySearchNames(code, language).some((name) => normalizeSearch(name).includes(value)));
+}
+
+function withSelectedCurrency(options: string[], selectedCurrency: string) {
+  return options.includes(selectedCurrency) ? options : [selectedCurrency, ...options];
 }
 
 function currencyLabel(code: string, language = "en") {
