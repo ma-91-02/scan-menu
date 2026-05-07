@@ -57,7 +57,7 @@ export function SessionBar({ expectedArea }: SessionBarProps) {
       await fetch(`${apiUrl}/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId })
+        body: JSON.stringify({ sessionId }),
       }).catch(() => undefined);
     }
 

@@ -13,11 +13,9 @@ import { PartnerNetworkSection } from "./sections/partner-network/PartnerNetwork
 import { PricingSection } from "./sections/pricing/PricingSection";
 import { PublicDashboardPreview } from "./sections/public-dashboard-preview/PublicDashboardPreview";
 import { RestaurantPortalSection } from "./sections/restaurant-portal/RestaurantPortalSection";
-import {
-  buildLanguageOptions,
-  getPartnerContent,
-  getPublicFallbackCopy,
-} from "./lib/public-page";
+import { getPartnerContent } from "./lib/partner-copy";
+import { getPublicFallbackCopy } from "./lib/public-fallback-copy";
+import { buildLanguageOptions } from "./lib/public-page";
 import styles from "./page.module.scss";
 
 interface PublicHomePageProps {

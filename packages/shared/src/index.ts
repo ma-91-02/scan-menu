@@ -250,20 +250,19 @@ export const supportedLanguages: SupportedLanguage[] = [
   { code: "sv", nativeName: "Svenska", direction: "ltr" },
   { code: "el", nativeName: "Ελληνικά", direction: "ltr" },
   { code: "vi", nativeName: "Tiếng Việt", direction: "ltr" },
-  { code: "th", nativeName: "ไทย", direction: "ltr" }
+  { code: "th", nativeName: "ไทย", direction: "ltr" },
 ];
 
 export function pickLocalizedText(
   text: LocalizedText,
   preferredLanguage: LanguageCode | string,
-  fallbackLanguage: LanguageCode | string = "en"
+  fallbackLanguage: LanguageCode | string = "en",
 ) {
-  const value = (
+  const value =
     text[preferredLanguage as LanguageCode] ??
     text[fallbackLanguage as LanguageCode] ??
     Object.values(text)[0] ??
-    ""
-  );
+    "";
   return cleanLegacyFallbackMarker(value);
 }
 
@@ -271,4 +270,9 @@ function cleanLegacyFallbackMarker(value: string) {
   return value.replace(/^\[[a-z]{2}\]\s+/i, "");
 }
 export * from "./translation-catalog.js";
+export {
+  getRestaurantPageCopy,
+  getUiTranslationMap,
+  restaurantPageTranslationKeys,
+} from "./translation-catalog.js";
 export * from "./translation-coverage-validator.js";

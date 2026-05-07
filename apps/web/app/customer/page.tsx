@@ -56,8 +56,8 @@ const fallbackRestaurants: Restaurant[] = [
     name: "Bistro Aurora",
     operatingLanguage: "ru",
     supportedCustomerLanguages: ["ar", "en", "ru", "tr"],
-    status: "active"
-  }
+    status: "active",
+  },
 ];
 const defaultRestaurant = fallbackRestaurants[0]!;
 
@@ -68,8 +68,8 @@ const fallbackMenu: CustomerMenuItem[] = [
     displayName: "وعاء السلمون",
     displayDescription: "أرز، سلمون، أفوكادو، خيار، سمسم.",
     price: 18,
-    currency: "USD"
-  }
+    currency: "USD",
+  },
 ];
 
 const translations = {
@@ -112,8 +112,9 @@ const translations = {
     waiterSent: "تم إرسال طلب النادل.",
     todayDiscounts: "خصومات اليوم",
     scanHint: "يدعم الرابط: /customer?restaurantId=rst_bistro_01&table=5",
-    locationHint: "التصنيف الحالي تجريبي حسب مطاعم قريبة، ولاحقًا سنربطه بموقع المستخدم الحقيقي.",
-    restaurantLanguage: "لغة المطعم"
+    locationHint:
+      "التصنيف الحالي تجريبي حسب مطاعم قريبة، ولاحقًا سنربطه بموقع المستخدم الحقيقي.",
+    restaurantLanguage: "لغة المطعم",
   },
   en: {
     chooseLanguage: "Choose your language",
@@ -137,7 +138,8 @@ const translations = {
     signedIn: "Signed in",
     signOut: "Sign out",
     deleteAccount: "Delete account",
-    deleteAccountConfirm: "This will delete your account and linked orders. Are you sure?",
+    deleteAccountConfirm:
+      "This will delete your account and linked orders. Are you sure?",
     verifyEmail: "Please verify your email before signing in.",
     authRequired: "Register or log in before ordering.",
     orderNote: "Order note",
@@ -154,8 +156,9 @@ const translations = {
     waiterSent: "Waiter request sent.",
     todayDiscounts: "Today's discounts",
     scanHint: "Supported link: /customer?restaurantId=rst_bistro_01&table=5",
-    locationHint: "Nearby sorting is mocked for development; later it will use real customer location.",
-    restaurantLanguage: "Restaurant language"
+    locationHint:
+      "Nearby sorting is mocked for development; later it will use real customer location.",
+    restaurantLanguage: "Restaurant language",
   },
   ru: {
     chooseLanguage: "Выберите язык",
@@ -175,11 +178,13 @@ const translations = {
     name: "Имя",
     email: "Email",
     password: "Пароль",
-    termsConsent: "Я соглашаюсь с Условиями использования и Политикой конфиденциальности",
+    termsConsent:
+      "Я соглашаюсь с Условиями использования и Политикой конфиденциальности",
     signedIn: "Вход выполнен",
     signOut: "Выйти",
     deleteAccount: "Удалить аккаунт",
-    deleteAccountConfirm: "Аккаунт и связанные заказы будут удалены. Вы уверены?",
+    deleteAccountConfirm:
+      "Аккаунт и связанные заказы будут удалены. Вы уверены?",
     verifyEmail: "Подтвердите email перед входом.",
     authRequired: "Зарегистрируйтесь или войдите перед заказом.",
     orderNote: "Комментарий",
@@ -196,23 +201,30 @@ const translations = {
     waiterSent: "Запрос официанту отправлен.",
     todayDiscounts: "Скидки дня",
     scanHint: "Поддержка ссылки: /customer?restaurantId=rst_bistro_01&table=5",
-    locationHint: "Сортировка рядом пока тестовая; позже подключим реальную геолокацию.",
-    restaurantLanguage: "Язык ресторана"
-  }
+    locationHint:
+      "Сортировка рядом пока тестовая; позже подключим реальную геолокацию.",
+    restaurantLanguage: "Язык ресторана",
+  },
 };
 
 export default function CustomerPage() {
   const [language, setLanguage] = useState("");
-  const [languages, setLanguages] = useState<SupportedLanguage[]>(supportedLanguages);
+  const [languages, setLanguages] =
+    useState<SupportedLanguage[]>(supportedLanguages);
   const [activeView, setActiveView] = useState<ViewId>("menu");
   const [authMode, setAuthMode] = useState<AuthMode>("register");
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(fallbackRestaurants);
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState(defaultRestaurant.id);
+  const [restaurants, setRestaurants] =
+    useState<Restaurant[]>(fallbackRestaurants);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState(
+    defaultRestaurant.id,
+  );
   const [tableNumber, setTableNumber] = useState("5");
   const [qrInput, setQrInput] = useState("");
   const [menu, setMenu] = useState<CustomerMenuItem[]>(fallbackMenu);
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [removedIngredientsByItem, setRemovedIngredientsByItem] = useState<Record<string, string[]>>({});
+  const [removedIngredientsByItem, setRemovedIngredientsByItem] = useState<
+    Record<string, string[]>
+  >({});
   const [note, setNote] = useState("no onions");
   const [customer, setCustomer] = useState<CustomerUser | null>(null);
   const [authName, setAuthName] = useState("");
@@ -222,26 +234,33 @@ export default function CustomerPage() {
   const [status, setStatus] = useState("");
   const [lastOrder, setLastOrder] = useState<CustomerOrder | null>(null);
 
-  const selectedRestaurant = restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ?? defaultRestaurant;
+  const selectedRestaurant =
+    restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ??
+    defaultRestaurant;
   const currentLanguage = language || "ar";
-  const t = translations[currentLanguage as keyof typeof translations] ?? translations.en;
+  const t =
+    translations[currentLanguage as keyof typeof translations] ??
+    translations.en;
   const isRtl = ["ar", "ur", "fa", "he"].includes(currentLanguage);
   const quantity = Object.values(cart).reduce((sum, value) => sum + value, 0);
   const total = useMemo(
-    () => menu.reduce((sum, item) => sum + item.price * (cart[item.id] ?? 0), 0),
-    [cart, menu]
+    () =>
+      menu.reduce((sum, item) => sum + item.price * (cart[item.id] ?? 0), 0),
+    [cart, menu],
   );
   const tabs: Array<{ id: ViewId; label: string; icon: string }> = [
     { id: "menu", label: t.menu, icon: "≡" },
     { id: "waiter", label: t.waiter, icon: "!" },
     { id: "discounts", label: t.discounts, icon: "%" },
-    { id: "settings", label: t.settings, icon: "⚙" }
+    { id: "settings", label: t.settings, icon: "⚙" },
   ];
 
   useEffect(() => {
     fetch(`${apiUrl}/translations/languages`)
       .then((response) => response.json())
-      .then((payload) => setLanguages(payload.data?.length ? payload.data : supportedLanguages))
+      .then((payload) =>
+        setLanguages(payload.data?.length ? payload.data : supportedLanguages),
+      )
       .catch(() => setLanguages(supportedLanguages));
 
     const params = new URLSearchParams(window.location.search);
@@ -280,7 +299,11 @@ export default function CustomerPage() {
       .then((payload) => {
         const data = payload.data?.length ? payload.data : fallbackRestaurants;
         setRestaurants(data);
-        setSelectedRestaurantId((current) => (data.some((item: Restaurant) => item.id === current) ? current : data[0].id));
+        setSelectedRestaurantId((current) =>
+          data.some((item: Restaurant) => item.id === current)
+            ? current
+            : data[0].id,
+        );
       })
       .catch(() => setRestaurants(fallbackRestaurants));
   }, []);
@@ -292,9 +315,13 @@ export default function CustomerPage() {
 
     setCart({});
     setLastOrder(null);
-    fetch(`${apiUrl}/restaurants/${selectedRestaurantId}/menu?language=${language}`)
+    fetch(
+      `${apiUrl}/restaurants/${selectedRestaurantId}/menu?language=${language}`,
+    )
       .then((response) => response.json())
-      .then((payload) => setMenu(payload.data?.length ? payload.data : fallbackMenu))
+      .then((payload) =>
+        setMenu(payload.data?.length ? payload.data : fallbackMenu),
+      )
       .catch(() => setMenu(fallbackMenu));
   }, [language, selectedRestaurantId]);
 
@@ -303,7 +330,9 @@ export default function CustomerPage() {
       return;
     }
 
-    const events = new EventSource(`${apiUrl}/orders/events?customerId=${customer.id}&language=${currentLanguage}`);
+    const events = new EventSource(
+      `${apiUrl}/orders/events?customerId=${customer.id}&language=${currentLanguage}`,
+    );
     events.addEventListener("orders", (event) => {
       const payload = JSON.parse((event as MessageEvent).data);
       setLastOrder(payload.data?.[0] ?? null);
@@ -323,12 +352,15 @@ export default function CustomerPage() {
       const response = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: authEmail, password: authPassword })
+        body: JSON.stringify({ identifier: authEmail, password: authPassword }),
       });
       const payload = await response.json();
 
       if (!response.ok || payload.data.user.role !== "customer") {
-        if (response.status === 403 && payload.code === "EMAIL_VERIFICATION_REQUIRED") {
+        if (
+          response.status === 403 &&
+          payload.code === "EMAIL_VERIFICATION_REQUIRED"
+        ) {
           window.location.href = `/verify-email?lang=${currentLanguage}&notice=required&email=${encodeURIComponent(authEmail)}`;
           return;
         }
@@ -336,7 +368,11 @@ export default function CustomerPage() {
         return;
       }
 
-      const user = { id: payload.data.user.id, name: payload.data.user.name, email: payload.data.user.email };
+      const user = {
+        id: payload.data.user.id,
+        name: payload.data.user.name,
+        email: payload.data.user.email,
+      };
       localStorage.setItem(sessionStorageKey, payload.data.session.id);
       localStorage.setItem(customerStorageKey, JSON.stringify(user));
       setCustomer(user);
@@ -360,8 +396,8 @@ export default function CustomerPage() {
         preferredLanguage: currentLanguage,
         termsAccepted: acceptedPolicies,
         privacyAccepted: acceptedPolicies,
-        consentAt: new Date().toISOString()
-      })
+        consentAt: new Date().toISOString(),
+      }),
     });
     const payload = await response.json();
 
@@ -370,7 +406,11 @@ export default function CustomerPage() {
       return;
     }
 
-    const user = { id: payload.data.user.id, name: payload.data.user.name, email: payload.data.user.email };
+    const user = {
+      id: payload.data.user.id,
+      name: payload.data.user.name,
+      email: payload.data.user.email,
+    };
     localStorage.setItem(sessionStorageKey, payload.data.session.id);
     localStorage.setItem(customerStorageKey, JSON.stringify(user));
     setCustomer(user);
@@ -391,7 +431,7 @@ export default function CustomerPage() {
 
     const response = await fetch(`${apiUrl}/auth/account`, {
       method: "DELETE",
-      headers: { "x-session-id": sessionId }
+      headers: { "x-session-id": sessionId },
     });
 
     if (response.ok) signOut();
@@ -435,7 +475,7 @@ export default function CustomerPage() {
         menuItemId,
         quantity: itemQuantity,
         customerNote: `${note}; table ${tableNumber}`,
-        removedIngredientIds: removedIngredientsByItem[menuItemId] ?? []
+        removedIngredientIds: removedIngredientsByItem[menuItemId] ?? [],
       }));
 
     const response = await fetch(`${apiUrl}/orders`, {
@@ -448,8 +488,8 @@ export default function CustomerPage() {
         restaurantLanguage: selectedRestaurant.operatingLanguage,
         tableNumber,
         paymentMethod: "cash",
-        lines
-      })
+        lines,
+      }),
     });
     const payload = await response.json();
 
@@ -479,8 +519,14 @@ export default function CustomerPage() {
         customerLanguage: currentLanguage,
         restaurantLanguage: selectedRestaurant.operatingLanguage,
         tableNumber,
-        lines: [{ menuItemId: "waiter_request", quantity: 1, customerNote: t.waiterTitle }]
-      })
+        lines: [
+          {
+            menuItemId: "waiter_request",
+            quantity: 1,
+            customerNote: t.waiterTitle,
+          },
+        ],
+      }),
     });
 
     setStatus(response.ok ? t.waiterSent : t.failed);
@@ -495,7 +541,11 @@ export default function CustomerPage() {
           <p>{translations.ar.languageHint}</p>
           <div className="language-choice-grid">
             {languages.slice(0, 8).map((item) => (
-              <button key={item.code} type="button" onClick={() => setLanguage(String(item.code))}>
+              <button
+                key={item.code}
+                type="button"
+                onClick={() => setLanguage(String(item.code))}
+              >
                 {item.nativeName}
               </button>
             ))}
@@ -520,8 +570,13 @@ export default function CustomerPage() {
 
         <section className="customer-location-card">
           <div>
-            <span>{t.table} {tableNumber}</span>
-            <strong>{t.restaurantLanguage}: {selectedRestaurant.operatingLanguage.toUpperCase()}</strong>
+            <span>
+              {t.table} {tableNumber}
+            </span>
+            <strong>
+              {t.restaurantLanguage}:{" "}
+              {selectedRestaurant.operatingLanguage.toUpperCase()}
+            </strong>
             <small>{t.locationHint}</small>
           </div>
           <button type="button" onClick={() => setActiveView("settings")}>
@@ -532,26 +587,49 @@ export default function CustomerPage() {
         {!customer ? (
           <section className="mobile-auth-card">
             <div className="mobile-segment">
-              <button className={authMode === "register" ? "active" : ""} type="button" onClick={() => setAuthMode("register")}>
+              <button
+                className={authMode === "register" ? "active" : ""}
+                type="button"
+                onClick={() => setAuthMode("register")}
+              >
                 {t.register}
               </button>
-              <button className={authMode === "login" ? "active" : ""} type="button" onClick={() => setAuthMode("login")}>
+              <button
+                className={authMode === "login" ? "active" : ""}
+                type="button"
+                onClick={() => setAuthMode("login")}
+              >
                 {t.login}
               </button>
             </div>
             {authMode === "register" ? (
-              <input placeholder={t.name} value={authName} onChange={(event) => setAuthName(event.target.value)} />
+              <input
+                placeholder={t.name}
+                value={authName}
+                onChange={(event) => setAuthName(event.target.value)}
+              />
             ) : null}
-            <input placeholder={t.email} value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} />
+            <input
+              placeholder={t.email}
+              value={authEmail}
+              onChange={(event) => setAuthEmail(event.target.value)}
+            />
             {authMode === "login" || authMode === "register" ? (
-              <input placeholder={t.password} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+              <input
+                placeholder={t.password}
+                type="password"
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+              />
             ) : null}
             {authMode === "register" ? (
               <label className="mobile-consent-row">
                 <input
                   type="checkbox"
                   checked={acceptedPolicies}
-                  onChange={(event) => setAcceptedPolicies(event.target.checked)}
+                  onChange={(event) =>
+                    setAcceptedPolicies(event.target.checked)
+                  }
                 />
                 {t.termsConsent}
               </label>
@@ -564,7 +642,9 @@ export default function CustomerPage() {
           <section className="mobile-user-card">
             <span>{t.signedIn}</span>
             <strong>{customer.name}</strong>
-            <button type="button" onClick={signOut}>{t.signOut}</button>
+            <button type="button" onClick={signOut}>
+              {t.signOut}
+            </button>
           </section>
         )}
 
@@ -578,28 +658,41 @@ export default function CustomerPage() {
               <div className="mobile-restaurant-strip">
                 {restaurants.map((restaurant, index) => (
                   <button
-                    className={restaurant.id === selectedRestaurantId ? "active" : ""}
+                    className={
+                      restaurant.id === selectedRestaurantId ? "active" : ""
+                    }
                     key={restaurant.id}
                     type="button"
                     onClick={() => setSelectedRestaurantId(restaurant.id)}
                   >
                     <span>{restaurant.name}</span>
-                    <small>{index + 1}.{index + 4} km</small>
+                    <small>
+                      {index + 1}.{index + 4} km
+                    </small>
                   </button>
                 ))}
               </div>
               <div className="mobile-menu-list">
                 {menu.map((item) => (
                   <article className="mobile-menu-item" key={item.id}>
-                    <div className="mobile-food-photo">{item.displayName.slice(0, 1)}</div>
+                    <div className="mobile-food-photo">
+                      {item.displayName.slice(0, 1)}
+                    </div>
                     <div>
                       <h3>{item.displayName}</h3>
                       <p>{item.displayDescription}</p>
                       <footer>
-                        <strong>{item.price} {item.currency}</strong>
+                        <strong>
+                          {item.price} {item.currency}
+                        </strong>
                         <button
                           type="button"
-                          onClick={() => setCart((current) => ({ ...current, [item.id]: (current[item.id] ?? 0) + 1 }))}
+                          onClick={() =>
+                            setCart((current) => ({
+                              ...current,
+                              [item.id]: (current[item.id] ?? 0) + 1,
+                            }))
+                          }
                         >
                           {t.add}
                         </button>
@@ -607,7 +700,10 @@ export default function CustomerPage() {
                       {item.ingredients?.length ? (
                         <div className="customer-ingredient-list">
                           {item.ingredients.map((ingredient) => {
-                            const removed = removedIngredientsByItem[item.id]?.includes(ingredient.id) ?? false;
+                            const removed =
+                              removedIngredientsByItem[item.id]?.includes(
+                                ingredient.id,
+                              ) ?? false;
                             return (
                               <button
                                 className={removed ? "removed" : ""}
@@ -618,9 +714,13 @@ export default function CustomerPage() {
                                     const itemRemoved = current[item.id] ?? [];
                                     return {
                                       ...current,
-                                      [item.id]: itemRemoved.includes(ingredient.id)
-                                        ? itemRemoved.filter((id) => id !== ingredient.id)
-                                        : [...itemRemoved, ingredient.id]
+                                      [item.id]: itemRemoved.includes(
+                                        ingredient.id,
+                                      )
+                                        ? itemRemoved.filter(
+                                            (id) => id !== ingredient.id,
+                                          )
+                                        : [...itemRemoved, ingredient.id],
                                     };
                                   })
                                 }
@@ -643,7 +743,9 @@ export default function CustomerPage() {
             <section className="mobile-action-panel">
               <h2>{t.waiterTitle}</h2>
               <p>{t.waiterBody}</p>
-              <button type="button" onClick={requestWaiter}>{t.callWaiter}</button>
+              <button type="button" onClick={requestWaiter}>
+                {t.callWaiter}
+              </button>
             </section>
           ) : null}
 
@@ -663,7 +765,10 @@ export default function CustomerPage() {
             <section className="mobile-settings">
               <label>
                 {t.chooseLanguage}
-                <select value={currentLanguage} onChange={(event) => setLanguage(event.target.value)}>
+                <select
+                  value={currentLanguage}
+                  onChange={(event) => setLanguage(event.target.value)}
+                >
                   {languages.slice(0, 8).map((item) => (
                     <option key={item.code} value={String(item.code)}>
                       {item.nativeName}
@@ -673,10 +778,24 @@ export default function CustomerPage() {
               </label>
               <label>
                 {t.pasteQr}
-                <input value={qrInput} onChange={(event) => setQrInput(event.target.value)} placeholder="/customer?restaurantId=rst_bistro_01&table=5" />
+                <input
+                  value={qrInput}
+                  onChange={(event) => setQrInput(event.target.value)}
+                  placeholder="/customer?restaurantId=rst_bistro_01&table=5"
+                />
               </label>
-              <button type="button" onClick={applyQrLink}>{t.apply}</button>
-              {customer ? <button className="danger-button" type="button" onClick={() => void deleteAccount()}>{t.deleteAccount}</button> : null}
+              <button type="button" onClick={applyQrLink}>
+                {t.apply}
+              </button>
+              {customer ? (
+                <button
+                  className="danger-button"
+                  type="button"
+                  onClick={() => void deleteAccount()}
+                >
+                  {t.deleteAccount}
+                </button>
+              ) : null}
               <small>{t.scanHint}</small>
             </section>
           ) : null}
@@ -685,10 +804,18 @@ export default function CustomerPage() {
         <section className="mobile-cart-bar">
           <div>
             <span>{t.cart}</span>
-            <strong>{quantity} / {total} USD</strong>
+            <strong>
+              {quantity} / {total} USD
+            </strong>
           </div>
-          <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.orderNote} />
-          <button type="button" onClick={placeOrder}>{t.placeOrder}</button>
+          <input
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={t.orderNote}
+          />
+          <button type="button" onClick={placeOrder}>
+            {t.placeOrder}
+          </button>
         </section>
 
         {status ? <p className="mobile-status">{status}</p> : null}
@@ -697,7 +824,8 @@ export default function CustomerPage() {
             <strong>#{lastOrder.id}</strong>
             {lastOrder.displayLines?.map((line) => (
               <span key={line.menuItemId}>
-                {line.quantity} {line.displayName} {line.displayNote ? `- ${line.displayNote}` : ""}
+                {line.quantity} {line.displayName}{" "}
+                {line.displayNote ? `- ${line.displayNote}` : ""}
               </span>
             ))}
           </section>
@@ -705,7 +833,12 @@ export default function CustomerPage() {
 
         <nav className="mobile-bottom-tabs">
           {tabs.map((tab) => (
-            <button className={activeView === tab.id ? "active" : ""} key={tab.id} type="button" onClick={() => setActiveView(tab.id)}>
+            <button
+              className={activeView === tab.id ? "active" : ""}
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveView(tab.id)}
+            >
               <span>{tab.icon}</span>
               {tab.label}
             </button>

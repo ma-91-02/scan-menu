@@ -1,18 +1,36 @@
-import { getDashboardData, getRawPublicPage, languageLabel } from "../../lib/api";
+import {
+  getDashboardData,
+  getRawPublicPage,
+  languageLabel,
+} from "../../lib/api";
 import { SessionBar } from "../session-actions";
 import { PublicContentManager } from "./public-content-manager";
 
 export default async function AdminDashboardPage() {
   const [{ apiUrl, languages, menu, orders }, publicPage] = await Promise.all([
     getDashboardData(),
-    getRawPublicPage()
+    getRawPublicPage(),
   ]);
-  const activeOrders = orders.filter((order) => !["completed", "cancelled"].includes(order.status));
+  const activeOrders = orders.filter(
+    (order) => !["completed", "cancelled"].includes(order.status),
+  );
   const metrics = [
     { label: "المطاعم النشطة", value: "1", detail: "جاهزة لاستقبال الطلبات" },
-    { label: "طلبات اليوم", value: orders.length.toString(), detail: `${activeOrders.length} طلب نشط` },
-    { label: "أصناف القائمة", value: menu.length.toString(), detail: "متعددة اللغات" },
-    { label: "اللغات", value: languages.length.toString(), detail: "تحكم مركزي" }
+    {
+      label: "طلبات اليوم",
+      value: orders.length.toString(),
+      detail: `${activeOrders.length} طلب نشط`,
+    },
+    {
+      label: "أصناف القائمة",
+      value: menu.length.toString(),
+      detail: "متعددة اللغات",
+    },
+    {
+      label: "اللغات",
+      value: languages.length.toString(),
+      detail: "تحكم مركزي",
+    },
   ];
 
   return (
@@ -46,7 +64,9 @@ export default async function AdminDashboardPage() {
         <header className="topbar">
           <div>
             <h1>لوحة تحكم Scan Menu</h1>
-            <p className="muted">إدارة المطاعم، الطلبات، المستخدمين، ومحتوى الواجهة العامة.</p>
+            <p className="muted">
+              إدارة المطاعم، الطلبات، المستخدمين، ومحتوى الواجهة العامة.
+            </p>
             <p className="muted">API: {apiUrl}</p>
           </div>
           <a className="button" href="/">
@@ -85,15 +105,21 @@ export default async function AdminDashboardPage() {
                     <td>{order.id}</td>
                     <td>{order.customerId}</td>
                     <td>
-                      {languageLabel(order.customerLanguage)} {"->"} {languageLabel(order.restaurantLanguage)}
+                      {languageLabel(order.customerLanguage)} {"->"}{" "}
+                      {languageLabel(order.restaurantLanguage)}
                     </td>
                     <td>
                       {order.lines
-                        .map((line) => `${line.customerNote ?? "-"} -> ${line.restaurantNote ?? "-"}`)
+                        .map(
+                          (line) =>
+                            `${line.customerNote ?? "-"} -> ${line.restaurantNote ?? "-"}`,
+                        )
                         .join(", ")}
                     </td>
                     <td>
-                      <span className="status">{statusLabel(order.status)}</span>
+                      <span className="status">
+                        {statusLabel(order.status)}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -147,7 +173,7 @@ function statusLabel(status: string) {
     preparing: "قيد التحضير",
     ready: "جاهز",
     completed: "مكتمل",
-    cancelled: "ملغي"
+    cancelled: "ملغي",
   };
 
   return labels[status] ?? status;

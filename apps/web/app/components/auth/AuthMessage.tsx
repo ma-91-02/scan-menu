@@ -1,1 +1,3 @@
-export { FormMessage as AuthMessage } from "../forms/FormMessage";
+import { FormMessage } from "../forms/FormMessage";
+
+export const AuthMessage = FormMessage;

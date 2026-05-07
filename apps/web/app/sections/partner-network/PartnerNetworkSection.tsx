@@ -1,6 +1,6 @@
 import { PrimaryButton } from "../../components/buttons/PrimaryButton";
 import { SectionHeading } from "../../components/layout/SectionHeading";
-import type { PartnerContent } from "../../lib/public-page";
+import type { PartnerContent } from "../../lib/partner-copy";
 import styles from "./PartnerNetworkSection.module.scss";
 
 interface PartnerNetworkSectionProps {

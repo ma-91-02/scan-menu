@@ -1,1 +1,3 @@
-export { LoginSection, RegistrationSection } from "./AuthSections";
+import { LoginSection, RegistrationSection } from "./AuthSections";
+
+export { LoginSection, RegistrationSection };

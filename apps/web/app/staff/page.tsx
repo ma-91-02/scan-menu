@@ -25,9 +25,9 @@ export default function StaffDashboardPage() {
           <article className="workspace-panel">
             <h2>Assigned work</h2>
             <p>
-              Staff accounts land here instead of the platform admin dashboard. The visible modules
-              should later be filtered by permissions such as kitchen, cashier, delivery, or
-              accountant access.
+              Staff accounts land here instead of the platform admin dashboard.
+              The visible modules should later be filtered by permissions such
+              as kitchen, cashier, delivery, or accountant access.
             </p>
           </article>
 

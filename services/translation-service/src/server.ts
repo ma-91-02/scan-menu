@@ -2,18 +2,24 @@ import cors from "cors";
 import express from "express";
 import {
   allergenTaxonomy,
+  getRestaurantPageCopy,
+  getUiTranslationMap,
   ingredientTaxonomy,
   menuSectionTaxonomy,
   modifierTaxonomy,
   pickCatalogTranslation,
   scanMenuLanguages,
-  uiTranslations
+  uiTranslations,
 } from "@scanmenu/shared";
-import type { LanguageCode, LocalizedPublicPageContent, PublicPageContent } from "@scanmenu/shared";
+import type {
+  LanguageCode,
+  LocalizedPublicPageContent,
+  PublicPageContent,
+} from "@scanmenu/shared";
 import { pickLocalizedText, supportedLanguages } from "@scanmenu/shared";
 
 const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
-  "no_onions": {
+  no_onions: {
     ar: "بدون بصل",
     en: "no onions",
     ru: "без лука",
@@ -38,7 +44,7 @@ const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
     sv: "utan lök",
     el: "χωρίς κρεμμύδι",
     vi: "không hành",
-    th: "ไม่ใส่หัวหอม"
+    th: "ไม่ใส่หัวหอม",
   },
   spicy: {
     ar: "حار",
@@ -65,50 +71,50 @@ const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
     sv: "stark",
     el: "πικάντικο",
     vi: "cay",
-    th: "เผ็ด"
+    th: "เผ็ด",
   },
   onion: {
     ar: "بصل",
     en: "onion",
     ru: "лук",
     tr: "soğan",
-    fr: "oignon"
+    fr: "oignon",
   },
   tomato: {
     ar: "طماطم",
     en: "tomato",
     ru: "помидор",
     tr: "domates",
-    fr: "tomate"
+    fr: "tomate",
   },
   "garlic sauce": {
     ar: "صلصة الثوم",
     en: "garlic sauce",
     ru: "чесночный соус",
     tr: "sarımsak sosu",
-    fr: "sauce a l'ail"
+    fr: "sauce a l'ail",
   },
   lemon: {
     ar: "ليمون",
     en: "lemon",
     ru: "лимон",
     tr: "limon",
-    fr: "citron"
+    fr: "citron",
   },
   "waiter request": {
     ar: "طلب نادل",
     en: "waiter request",
     ru: "вызов официанта",
     tr: "garson çağrısı",
-    fr: "appel serveur"
+    fr: "appel serveur",
   },
-  "without": {
+  without: {
     ar: "بدون",
     en: "without",
     ru: "без",
     tr: "olmadan",
-    fr: "sans"
-  }
+    fr: "sans",
+  },
 };
 
 let publicPageContent: PublicPageContent = {
@@ -116,7 +122,7 @@ let publicPageContent: PublicPageContent = {
   brandName: {
     ar: "Scan Menu",
     en: "Scan Menu",
-    ru: "Scan Menu"
+    ru: "Scan Menu",
   },
   nav: {
     home: {
@@ -127,7 +133,7 @@ let publicPageContent: PublicPageContent = {
       fr: "Accueil",
       es: "Inicio",
       de: "Start",
-      zh: "首页"
+      zh: "首页",
     },
     pricing: {
       ar: "الأسعار",
@@ -137,7 +143,7 @@ let publicPageContent: PublicPageContent = {
       fr: "Tarifs",
       es: "Precios",
       de: "Preise",
-      zh: "价格"
+      zh: "价格",
     },
     about: {
       ar: "من نحن",
@@ -147,7 +153,7 @@ let publicPageContent: PublicPageContent = {
       fr: "À propos",
       es: "Nosotros",
       de: "Über uns",
-      zh: "关于我们"
+      zh: "关于我们",
     },
     login: {
       ar: "دخول",
@@ -157,7 +163,7 @@ let publicPageContent: PublicPageContent = {
       fr: "Connexion",
       es: "Iniciar sesión",
       de: "Anmelden",
-      zh: "登录"
+      zh: "登录",
     },
     registration: {
       ar: "تسجيل",
@@ -167,7 +173,7 @@ let publicPageContent: PublicPageContent = {
       fr: "Inscription",
       es: "Registro",
       de: "Registrierung",
-      zh: "注册"
+      zh: "注册",
     },
     restaurant: {
       ar: "مطعمك",
@@ -177,8 +183,8 @@ let publicPageContent: PublicPageContent = {
       fr: "Votre restaurant",
       es: "Tu restaurante",
       de: "Dein Restaurant",
-      zh: "你的餐厅"
-    }
+      zh: "你的餐厅",
+    },
   },
   hero: {
     eyebrow: {
@@ -206,7 +212,7 @@ let publicPageContent: PublicPageContent = {
       sv: "Flerspråkig restaurangplattform",
       el: "Πολύγλωσση πλατφόρμα εστιατορίων",
       vi: "Nền tảng nhà hàng đa ngôn ngữ",
-      th: "แพลตฟอร์มร้านอาหารหลายภาษา"
+      th: "แพลตฟอร์มร้านอาหารหลายภาษา",
     },
     title: {
       ar: "اجعل كل زائر يطلب بلغته، واجعل مطعمك يستقبل الطلب بلغته.",
@@ -233,7 +239,7 @@ let publicPageContent: PublicPageContent = {
       sv: "Låt varje gäst beställa på sitt språk, medan din restaurang tar emot det på sitt.",
       el: "Αφήστε κάθε πελάτη να παραγγέλνει στη γλώσσα του, ενώ το εστιατόριό σας λαμβάνει την παραγγελία στη δική του.",
       vi: "Hãy để mỗi khách hàng đặt món bằng ngôn ngữ của họ, trong khi nhà hàng của bạn nhận đơn bằng ngôn ngữ của mình.",
-      th: "ให้ลูกค้าทุกคนสั่งอาหารด้วยภาษาของตนเอง ในขณะที่ร้านอาหารของคุณรับคำสั่งซื้อด้วยภาษาของคุณ"
+      th: "ให้ลูกค้าทุกคนสั่งอาหารด้วยภาษาของตนเอง ในขณะที่ร้านอาหารของคุณรับคำสั่งซื้อด้วยภาษาของคุณ",
     },
     subtitle: {
       ar: "Scan Menu تربط العملاء والمطاعم عبر ترجمة مركزية، إدارة قوائم، طلبات مباشرة، وصلاحيات للموظفين والمحاسبين وأصحاب المطاعم.",
@@ -260,7 +266,7 @@ let publicPageContent: PublicPageContent = {
       sv: "Scan Menu kopplar samman gäster och restauranger med central översättning, menyhantering, livebeställningar och roller för personal, ekonomer och ägare.",
       el: "Το Scan Menu συνδέει πελάτες και εστιατόρια με κεντρική μετάφραση, διαχείριση μενού, ζωντανές παραγγελίες και ρόλους για προσωπικό, λογιστές και ιδιοκτήτες.",
       vi: "Scan Menu kết nối khách hàng và nhà hàng thông qua dịch thuật tập trung, quản lý menu, đơn hàng thời gian thực và các vai trò cho nhân viên, kế toán và chủ sở hữu.",
-      th: "Scan Menu เชื่อมต่อลูกค้าและร้านอาหารด้วยการแปลแบบศูนย์กลาง การจัดการเมนู คำสั่งซื้อแบบเรียลไทม์ และบทบาทสำหรับพนักงาน นักบัญชี และเจ้าของร้าน"
+      th: "Scan Menu เชื่อมต่อลูกค้าและร้านอาหารด้วยการแปลแบบศูนย์กลาง การจัดการเมนู คำสั่งซื้อแบบเรียลไทม์ และบทบาทสำหรับพนักงาน นักบัญชี และเจ้าของร้าน",
     },
     primaryAction: {
       ar: "ابدأ لمطعمك",
@@ -287,7 +293,7 @@ let publicPageContent: PublicPageContent = {
       sv: "Starta för din restaurang",
       el: "Ξεκινήστε για το εστιατόριό σας",
       vi: "Bắt đầu cho nhà hàng của bạn",
-      th: "เริ่มต้นสำหรับร้านอาหารของคุณ"
+      th: "เริ่มต้นสำหรับร้านอาหารของคุณ",
     },
     secondaryAction: {
       ar: "شاهد المزايا",
@@ -314,10 +320,10 @@ let publicPageContent: PublicPageContent = {
       sv: "Utforska funktioner",
       el: "Εξερευνήστε λειτουργίες",
       vi: "Khám phá tính năng",
-      th: "สำรวจฟีเจอร์"
+      th: "สำรวจฟีเจอร์",
     },
     imageUrl:
-      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80"
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
   },
   featureCards: [
     {
@@ -325,7 +331,7 @@ let publicPageContent: PublicPageContent = {
       title: {
         ar: "ترجمة الطلبات",
         en: "Order translation",
-        ru: "Перевод заказов"
+        ru: "Перевод заказов",
       },
       description: {
         ar: "العميل يكتب ملاحظته بلغته، والمطبخ يستلمها بلغة المطعم.",
@@ -352,17 +358,17 @@ let publicPageContent: PublicPageContent = {
         sv: "Gäster skriver anteckningar på sitt språk; köket får dem på restaurangens språk.",
         el: "Οι πελάτες γράφουν σημειώσεις στη γλώσσα τους· η κουζίνα τις λαμβάνει στη γλώσσα του εστιατορίου.",
         vi: "Khách hàng viết ghi chú bằng ngôn ngữ của họ; nhà bếp nhận được bằng ngôn ngữ của nhà hàng.",
-        th: "ลูกค้าเขียนโน้ตด้วยภาษาของตนเอง และครัวจะได้รับในภาษาของร้านอาหาร"
+        th: "ลูกค้าเขียนโน้ตด้วยภาษาของตนเอง และครัวจะได้รับในภาษาของร้านอาหาร",
       },
       imageUrl:
-        "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80"
+        "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80",
     },
     {
       id: "operations",
       title: {
         ar: "تشغيل المطعم",
         en: "Restaurant operations",
-        ru: "Управление рестораном"
+        ru: "Управление рестораном",
       },
       description: {
         ar: "إدارة القوائم، الموظفين، الكاشير، المطبخ، الفروع، وخدمات التوصيل.",
@@ -389,26 +395,26 @@ let publicPageContent: PublicPageContent = {
         sv: "Hantera menyer, personal, kassa, kök, filialer och leveranstjänster.",
         el: "Διαχειριστείτε μενού, προσωπικό, ταμείο, κουζίνα, υποκαταστήματα και υπηρεσίες παράδοσης.",
         vi: "Quản lý menu, nhân viên, thu ngân, bếp, chi nhánh và dịch vụ giao hàng.",
-        th: "จัดการเมนู พนักงาน แคชเชียร์ ครัว สาขา และบริการจัดส่ง"
+        th: "จัดการเมนู พนักงาน แคชเชียร์ ครัว สาขา และบริการจัดส่ง",
       },
       imageUrl:
-        "https://images.unsplash.com/photo-1559329007-40df8a9345d8?auto=format&fit=crop&w=1200&q=80"
+        "https://images.unsplash.com/photo-1559329007-40df8a9345d8?auto=format&fit=crop&w=1200&q=80",
     },
     {
       id: "analytics",
       title: {
         ar: "محاسبة ورقابة",
         en: "Accounting and control",
-        ru: "Финансы и контроль"
+        ru: "Финансы и контроль",
       },
       description: {
         ar: "صلاحيات للمحاسبين وتقارير تساعد مالك المطعم ومالك المنصة.",
         en: "Accountant roles and reports for restaurant owners and platform ownership.",
-        ru: "Роли бухгалтеров и отчеты для владельцев ресторанов и платформы."
+        ru: "Роли бухгалтеров и отчеты для владельцев ресторанов и платформы.",
       },
       imageUrl:
-        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80"
-    }
+        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80",
+    },
   ],
   pricing: [
     {
@@ -416,46 +422,66 @@ let publicPageContent: PublicPageContent = {
       name: { ar: "Basic", en: "Basic", ru: "Basic" },
       price: { ar: "0 / شهر", en: "0 / mo", ru: "0 / мес" },
       features: [
-        { ar: "10 أصناف في القائمة", en: "10 menu items", ru: "10 позиций меню" },
-        { ar: "إدارة 5 موظفين", en: "Manage 5 employees", ru: "5 сотрудников" }
-      ]
+        {
+          ar: "10 أصناف في القائمة",
+          en: "10 menu items",
+          ru: "10 позиций меню",
+        },
+        { ar: "إدارة 5 موظفين", en: "Manage 5 employees", ru: "5 сотрудников" },
+      ],
     },
     {
       id: "standard",
       name: { ar: "Standard", en: "Standard", ru: "Standard" },
       price: { ar: "19.99$ / شهر", en: "$19.99 / mo", ru: "19.99$ / мес" },
       features: [
-        { ar: "25 صنفًا في القائمة", en: "25 menu items", ru: "25 позиций меню" },
-        { ar: "إدارة 15 موظفًا", en: "Manage 15 employees", ru: "15 сотрудников" }
-      ]
+        {
+          ar: "25 صنفًا في القائمة",
+          en: "25 menu items",
+          ru: "25 позиций меню",
+        },
+        {
+          ar: "إدارة 15 موظفًا",
+          en: "Manage 15 employees",
+          ru: "15 сотрудников",
+        },
+      ],
     },
     {
       id: "premium",
       name: { ar: "Premium", en: "Premium", ru: "Premium" },
       price: { ar: "29.99$ / شهر", en: "$29.99 / mo", ru: "29.99$ / мес" },
       features: [
-        { ar: "موظفون وقوائم غير محدودة", en: "Unlimited staff and menu items", ru: "Безлимитные сотрудники и меню" },
-        { ar: "تقارير ومراقبة", en: "Reports and monitoring", ru: "Отчеты и мониторинг" }
-      ]
-    }
+        {
+          ar: "موظفون وقوائم غير محدودة",
+          en: "Unlimited staff and menu items",
+          ru: "Безлимитные сотрудники и меню",
+        },
+        {
+          ar: "تقارير ومراقبة",
+          en: "Reports and monitoring",
+          ru: "Отчеты и мониторинг",
+        },
+      ],
+    },
   ],
   about: {
     title: {
       ar: "Scan Menu ليست صفحة تعريف فقط، بل نظام تشغيل للمطاعم.",
       en: "Scan Menu is not only a website. It is an operating system for restaurants.",
-      ru: "Scan Menu - не просто сайт, а операционная система для ресторанов."
+      ru: "Scan Menu - не просто сайт, а операционная система для ресторанов.",
     },
     body: {
       ar: "يمكن لمالك المنصة التحكم بمحتوى الصفحة العامة، اللغات، الأسعار، وواجهات المطاعم من لوحة التحكم.",
       en: "The platform owner can control public content, languages, pricing, and restaurant-facing areas from the dashboard.",
-      ru: "Владелец платформы управляет контентом, языками, тарифами и ресторанными разделами из панели."
-    }
+      ru: "Владелец платформы управляет контентом, языками, тарифами и ресторанными разделами из панели.",
+    },
   },
   restaurantPortal: {
     title: {
       ar: "منطقة مطعمك",
       en: "Your restaurant area",
-      ru: "Зона ресторана"
+      ru: "Зона ресторана",
     },
     menuItems: [
       {
@@ -483,7 +509,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Profil",
         el: "Προφίλ",
         vi: "Hồ sơ",
-        th: "โปรไฟล์"
+        th: "โปรไฟล์",
       },
       {
         ar: "تغيير الخطة",
@@ -510,7 +536,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Ändra plan",
         el: "Αλλαγή προγράμματος",
         vi: "Thay đổi gói",
-        th: "เปลี่ยนแผน"
+        th: "เปลี่ยนแผน",
       },
       {
         ar: "القائمة",
@@ -537,7 +563,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Meny",
         el: "Μενού",
         vi: "Thực đơn",
-        th: "เมนู"
+        th: "เมนู",
       },
       {
         ar: "الموظفون",
@@ -564,7 +590,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Anställda",
         el: "Υπάλληλοι",
         vi: "Nhân viên",
-        th: "พนักงาน"
+        th: "พนักงาน",
       },
       {
         ar: "المطبخ",
@@ -591,7 +617,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Kök",
         el: "Κουζίνα",
         vi: "Bếp",
-        th: "ครัว"
+        th: "ครัว",
       },
       {
         ar: "الكاشير",
@@ -618,7 +644,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Kassör",
         el: "Ταμίας",
         vi: "Thu ngân",
-        th: "แคชเชียร์"
+        th: "แคชเชียร์",
       },
       {
         ar: "اللغات",
@@ -645,7 +671,7 @@ let publicPageContent: PublicPageContent = {
         sv: "Språk",
         el: "Γλώσσες",
         vi: "Ngôn ngữ",
-        th: "ภาษา"
+        th: "ภาษา",
       },
       {
         ar: "المالية",
@@ -672,97 +698,108 @@ let publicPageContent: PublicPageContent = {
         sv: "Ekonomi",
         el: "Οικονομικά",
         vi: "Tài chính",
-        th: "การเงิน"
-      }
-    ]
+        th: "การเงิน",
+      },
+    ],
   },
-  updatedAt: new Date().toISOString()
+  updatedAt: new Date().toISOString(),
 };
+
+publicPageContent = completePublicPageContent(publicPageContent);
 
 const port = Number(process.env.TRANSLATION_SERVICE_PORT ?? 4104);
 
 export function createApp() {
   const app = express();
 
-app.use(cors());
-app.use(express.json());
+  app.use(cors());
+  app.use(express.json());
 
-app.get("/languages", (_req, res) => {
-  res.json({ data: scanMenuLanguages });
-});
-
-app.get("/translations", (_req, res) => {
-  res.json({ data: Object.fromEntries(uiTranslations.map((item) => [item.key, item.translations])) });
-});
-
-app.get("/translations/:language", (req, res) => {
-  const language = String(req.params.language);
-  res.json({ data: Object.fromEntries(uiTranslations.map((item) => [item.key, pickCatalogTranslation(item.translations, language)])) });
-});
-
-app.get("/ingredients", (_req, res) => {
-  res.json({ data: ingredientTaxonomy });
-});
-
-app.get("/sections", (_req, res) => {
-  res.json({ data: menuSectionTaxonomy });
-});
-
-app.get("/sections/:language", (req, res) => {
-  const language = String(req.params.language);
-  res.json({
-    data: menuSectionTaxonomy.map((item) => ({
-      id: item.id,
-      displayName: pickCatalogTranslation(item.translations, language),
-      translations: item.translations
-    }))
+  app.get("/languages", (_req, res) => {
+    res.json({ data: scanMenuLanguages });
   });
-});
 
-app.get("/ingredients/:language", (req, res) => {
-  const language = String(req.params.language);
-  res.json({
-    data: ingredientTaxonomy.map((item) => ({
-      id: item.id,
-      category: item.category,
-      allergens: item.allergens,
-      displayName: pickCatalogTranslation(item.translations, language),
-      translations: item.translations
-    }))
+  app.get("/translations", (_req, res) => {
+    res.json({
+      data: Object.fromEntries(
+        uiTranslations.map((item) => [item.key, item.translations]),
+      ),
+    });
   });
-});
 
-app.get("/modifiers", (_req, res) => {
-  res.json({ data: modifierTaxonomy });
-});
-
-app.get("/modifiers/:language", (req, res) => {
-  const language = String(req.params.language);
-  res.json({
-    data: modifierTaxonomy.map((item) => ({
-      id: item.id,
-      type: item.type,
-      ingredientId: item.ingredientId,
-      displayName: pickCatalogTranslation(item.translations, language),
-      translations: item.translations
-    }))
+  app.get("/translations/:language", (req, res) => {
+    const language = String(req.params.language);
+    res.json({ data: getUiTranslationMap(language) });
   });
-});
 
-app.get("/allergens", (_req, res) => {
-  res.json({ data: allergenTaxonomy });
-});
-
-app.get("/allergens/:language", (req, res) => {
-  const language = String(req.params.language);
-  res.json({
-    data: allergenTaxonomy.map((item) => ({
-      id: item.id,
-      displayName: pickCatalogTranslation(item.translations, language),
-      translations: item.translations
-    }))
+  app.get("/restaurant-page/:language", (req, res) => {
+    const language = String(req.params.language);
+    res.json({ data: getRestaurantPageCopy(language) });
   });
-});
+
+  app.get("/ingredients", (_req, res) => {
+    res.json({ data: ingredientTaxonomy });
+  });
+
+  app.get("/sections", (_req, res) => {
+    res.json({ data: menuSectionTaxonomy });
+  });
+
+  app.get("/sections/:language", (req, res) => {
+    const language = String(req.params.language);
+    res.json({
+      data: menuSectionTaxonomy.map((item) => ({
+        id: item.id,
+        displayName: pickCatalogTranslation(item.translations, language),
+        translations: item.translations,
+      })),
+    });
+  });
+
+  app.get("/ingredients/:language", (req, res) => {
+    const language = String(req.params.language);
+    res.json({
+      data: ingredientTaxonomy.map((item) => ({
+        id: item.id,
+        category: item.category,
+        allergens: item.allergens,
+        displayName: pickCatalogTranslation(item.translations, language),
+        translations: item.translations,
+      })),
+    });
+  });
+
+  app.get("/modifiers", (_req, res) => {
+    res.json({ data: modifierTaxonomy });
+  });
+
+  app.get("/modifiers/:language", (req, res) => {
+    const language = String(req.params.language);
+    res.json({
+      data: modifierTaxonomy.map((item) => ({
+        id: item.id,
+        type: item.type,
+        ingredientId: item.ingredientId,
+        displayName: pickCatalogTranslation(item.translations, language),
+        translations: item.translations,
+      })),
+    });
+  });
+
+  app.get("/allergens", (_req, res) => {
+    res.json({ data: allergenTaxonomy });
+  });
+
+  app.get("/allergens/:language", (req, res) => {
+    const language = String(req.params.language);
+    res.json({
+      data: allergenTaxonomy.map((item) => ({
+        id: item.id,
+        displayName: pickCatalogTranslation(item.translations, language),
+        translations: item.translations,
+      })),
+    });
+  });
 
   app.get("/health", (_req, res) => {
     res.json({ data: { service: "translation-service", status: "ok" } });
@@ -785,7 +822,7 @@ app.get("/allergens/:language", (req, res) => {
     publicPageContent = {
       ...publicPageContent,
       ...req.body,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     res.json({ data: publicPageContent });
@@ -805,15 +842,63 @@ app.get("/allergens/:language", (req, res) => {
         sourceLanguage: req.body.sourceLanguage ?? "auto",
         targetLanguage,
         translatedText,
-        provider: phrase ? "scanmenu-phrasebook" : "source-fallback"
-      }
+        provider: phrase ? "scanmenu-phrasebook" : "source-fallback",
+      },
     });
   });
 
   return app;
 }
 
-export function localizePublicPage(language: string): LocalizedPublicPageContent {
+export function getPublicPageContentForCoverage() {
+  return publicPageContent;
+}
+
+function completePublicPageContent(
+  content: PublicPageContent,
+): PublicPageContent {
+  return completeLocalizedContent(content) as PublicPageContent;
+}
+
+function completeLocalizedContent(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => completeLocalizedContent(item));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (looksLikeLocalizedText(record)) {
+    const fallback = String(
+      record.en ?? record.ar ?? record.ru ?? Object.values(record)[0] ?? "",
+    );
+    return Object.fromEntries(
+      scanMenuLanguages.map((language) => [
+        language.code,
+        String(record[language.code] ?? fallback),
+      ]),
+    );
+  }
+
+  return Object.fromEntries(
+    Object.entries(record).map(([key, nestedValue]) => [
+      key,
+      completeLocalizedContent(nestedValue),
+    ]),
+  );
+}
+
+function looksLikeLocalizedText(record: Record<string, unknown>) {
+  return scanMenuLanguages.some(
+    (language) => language.code !== "id" && language.code in record,
+  );
+}
+
+export function localizePublicPage(
+  language: string,
+): LocalizedPublicPageContent {
   const direction =
     supportedLanguages.find((item) => item.code === language)?.direction ??
     (["ar", "fa", "he", "ur"].includes(language) ? "rtl" : "ltr");
@@ -826,42 +911,56 @@ export function localizePublicPage(language: string): LocalizedPublicPageContent
       pricing: pickLocalizedText(publicPageContent.nav.pricing, language),
       about: pickLocalizedText(publicPageContent.nav.about, language),
       login: pickLocalizedText(publicPageContent.nav.login, language),
-      registration: pickLocalizedText(publicPageContent.nav.registration, language),
-      restaurant: pickLocalizedText(publicPageContent.nav.restaurant, language)
+      registration: pickLocalizedText(
+        publicPageContent.nav.registration,
+        language,
+      ),
+      restaurant: pickLocalizedText(publicPageContent.nav.restaurant, language),
     },
     hero: {
       eyebrow: pickLocalizedText(publicPageContent.hero.eyebrow, language),
       title: pickLocalizedText(publicPageContent.hero.title, language),
       subtitle: pickLocalizedText(publicPageContent.hero.subtitle, language),
-      primaryAction: pickLocalizedText(publicPageContent.hero.primaryAction, language),
-      secondaryAction: pickLocalizedText(publicPageContent.hero.secondaryAction, language),
-      imageUrl: publicPageContent.hero.imageUrl
+      primaryAction: pickLocalizedText(
+        publicPageContent.hero.primaryAction,
+        language,
+      ),
+      secondaryAction: pickLocalizedText(
+        publicPageContent.hero.secondaryAction,
+        language,
+      ),
+      imageUrl: publicPageContent.hero.imageUrl,
     },
     featureCards: publicPageContent.featureCards.map((card) => ({
       id: card.id,
       title: pickLocalizedText(card.title, language),
       description: pickLocalizedText(card.description, language),
-      imageUrl: card.imageUrl
+      imageUrl: card.imageUrl,
     })),
     pricing: publicPageContent.pricing.map((plan) => ({
       id: plan.id,
       name: pickLocalizedText(plan.name, language),
       price: pickLocalizedText(plan.price, language),
-      features: plan.features.map((feature) => pickLocalizedText(feature, language))
+      features: plan.features.map((feature) =>
+        pickLocalizedText(feature, language),
+      ),
     })),
     about: {
       title: pickLocalizedText(publicPageContent.about.title, language),
-      body: pickLocalizedText(publicPageContent.about.body, language)
+      body: pickLocalizedText(publicPageContent.about.body, language),
     },
     restaurantPortal: {
-      title: pickLocalizedText(publicPageContent.restaurantPortal.title, language),
+      title: pickLocalizedText(
+        publicPageContent.restaurantPortal.title,
+        language,
+      ),
       menuItems: publicPageContent.restaurantPortal.menuItems.map((item) =>
-        pickLocalizedText(item, language)
-      )
+        pickLocalizedText(item, language),
+      ),
     },
     language,
     direction,
-    updatedAt: publicPageContent.updatedAt
+    updatedAt: publicPageContent.updatedAt,
   };
 }
 

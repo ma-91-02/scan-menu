@@ -1,1 +1,3 @@
-export { LoginForm as ForgotPasswordForm } from "../../public-actions";
+import { LoginForm } from "../../public-actions";
+
+export const ForgotPasswordForm = LoginForm;

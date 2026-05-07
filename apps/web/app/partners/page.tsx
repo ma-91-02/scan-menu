@@ -4,7 +4,7 @@ const partnerCards = [
   ["طلبات التوصيل", "متابعة الرحلات النشطة وتحديث حالة التسليم."],
   ["طلبات التوريد", "عرض طلبات المطاعم للمواد الطازجة والمخزون."],
   ["الكتالوج", "إدارة المنتجات والأسعار والكميات المتاحة."],
-  ["الفواتير", "متابعة المستحقات والمدفوعات بين الشركاء والمطاعم."]
+  ["الفواتير", "متابعة المستحقات والمدفوعات بين الشركاء والمطاعم."],
 ];
 
 export default function PartnersPage() {
@@ -31,8 +31,8 @@ export default function PartnersPage() {
           <article className="workspace-panel">
             <h2>Partner operations</h2>
             <p>
-              This workspace is for delivery drivers, farmers, grocery owners, and suppliers who
-              support restaurants through Scan Menu.
+              This workspace is for delivery drivers, farmers, grocery owners,
+              and suppliers who support restaurants through Scan Menu.
             </p>
           </article>
 

@@ -8,9 +8,13 @@ interface PublicContentManagerProps {
   initialContent: PublicPageContent;
 }
 
-export function PublicContentManager({ initialContent }: PublicContentManagerProps) {
+export function PublicContentManager({
+  initialContent,
+}: PublicContentManagerProps) {
   const [content, setContent] = useState(initialContent);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
+    "idle",
+  );
 
   async function saveContent() {
     setStatus("saving");
@@ -19,7 +23,7 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
       const response = await fetch(`${apiUrl}/translations/public-page`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(content)
+        body: JSON.stringify(content),
       });
 
       if (!response.ok) {
@@ -38,9 +42,16 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
       <div className="topbar compact">
         <div>
           <h2>إدارة محتوى الواجهة العامة</h2>
-          <p className="muted">هذه الحقول تتحكم بالنصوص الرئيسية في الصفحة العامة حسب اللغة.</p>
+          <p className="muted">
+            هذه الحقول تتحكم بالنصوص الرئيسية في الصفحة العامة حسب اللغة.
+          </p>
         </div>
-        <button className="button" type="button" onClick={saveContent} disabled={status === "saving"}>
+        <button
+          className="button"
+          type="button"
+          onClick={saveContent}
+          disabled={status === "saving"}
+        >
           {status === "saving" ? "جاري الحفظ" : "حفظ المحتوى"}
         </button>
       </div>
@@ -55,8 +66,8 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
                 ...current,
                 hero: {
                   ...current.hero,
-                  title: { ...current.hero.title, ar: event.target.value }
-                }
+                  title: { ...current.hero.title, ar: event.target.value },
+                },
               }))
             }
           />
@@ -71,8 +82,8 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
                 ...current,
                 hero: {
                   ...current.hero,
-                  title: { ...current.hero.title, en: event.target.value }
-                }
+                  title: { ...current.hero.title, en: event.target.value },
+                },
               }))
             }
           />
@@ -87,8 +98,8 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
                 ...current,
                 hero: {
                   ...current.hero,
-                  title: { ...current.hero.title, ru: event.target.value }
-                }
+                  title: { ...current.hero.title, ru: event.target.value },
+                },
               }))
             }
           />
@@ -101,7 +112,7 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
             onChange={(event) =>
               setContent((current) => ({
                 ...current,
-                hero: { ...current.hero, imageUrl: event.target.value }
+                hero: { ...current.hero, imageUrl: event.target.value },
               }))
             }
           />
@@ -118,8 +129,8 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
                 ...current,
                 about: {
                   ...current.about,
-                  body: { ...current.about.body, ar: event.target.value }
-                }
+                  body: { ...current.about.body, ar: event.target.value },
+                },
               }))
             }
           />
@@ -134,8 +145,8 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
                 ...current,
                 about: {
                   ...current.about,
-                  body: { ...current.about.body, en: event.target.value }
-                }
+                  body: { ...current.about.body, en: event.target.value },
+                },
               }))
             }
           />
@@ -143,7 +154,8 @@ export function PublicContentManager({ initialContent }: PublicContentManagerPro
       </div>
 
       <p className={`save-status ${status}`}>
-        {status === "saved" && "تم حفظ المحتوى. افتح الصفحة العامة أو غيّر اللغة لترى النتيجة."}
+        {status === "saved" &&
+          "تم حفظ المحتوى. افتح الصفحة العامة أو غيّر اللغة لترى النتيجة."}
         {status === "error" && "لم يتم الحفظ. تأكد أن API Gateway يعمل."}
       </p>
     </article>
