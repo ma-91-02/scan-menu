@@ -1,0 +1,6 @@
+@use "../../../styles" as *;
+
+.container {
+  width: min(1180px, calc(100% - 36px));
+  margin-inline: auto;
+}

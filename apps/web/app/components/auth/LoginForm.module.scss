@@ -1,0 +1,60 @@
+@use "../../../styles" as *;
+
+.form {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: $radius-card;
+  padding: clamp(22px, 4vw, 42px);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: $shadow-card;
+}
+
+.form h2 {
+  color: $color-text-strong;
+}
+
+.form label {
+  display: grid;
+  gap: 8px;
+  color: #2e5a51;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.form input {
+  @include form-control;
+}
+
+.form button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.inlineLink,
+.linkButton {
+  color: #163f36;
+  font-weight: 900;
+}
+
+.inlineLink {
+  text-decoration: none;
+}
+
+.linkButton {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  padding: 0;
+  text-align: start;
+  cursor: pointer;
+}
+
+.status {
+  min-height: 24px;
+  color: #163f36;
+  font-weight: 800;
+}

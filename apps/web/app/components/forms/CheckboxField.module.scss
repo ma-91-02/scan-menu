@@ -1,0 +1,32 @@
+@use "../../../styles" as *;
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  color: #2e5a51;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.field input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  accent-color: #2e5a51;
+}
+
+.links {
+  display: inline-flex;
+  gap: 8px;
+  margin-inline-start: 4px;
+}
+
+.links a {
+  color: #163f36;
+  font-weight: 900;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}

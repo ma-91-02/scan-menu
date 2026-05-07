@@ -1,0 +1,47 @@
+@use "../../../styles" as *;
+@use "../../../styles/breakpoints" as breakpoints;
+@use "../../../styles/typography" as typography;
+
+.section {
+  @include section-shell;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  gap: 22px;
+  background: #9aa8a2;
+
+  @include breakpoints.down(breakpoints.$tablet) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel,
+.menu {
+  border-radius: $radius-card;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 28px;
+}
+
+.panel h2 {
+  @include typography.section-title;
+}
+
+.panel p {
+  color: $color-text-muted;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.menu span {
+  border: 1px solid $color-border;
+  border-radius: $radius-card;
+  padding: 14px;
+  background: $color-surface;
+  color: #2e4b44;
+  font-size: 21px;
+}

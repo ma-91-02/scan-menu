@@ -1,0 +1,29 @@
+@use "../../../styles" as *;
+
+.loginSection {
+  min-height: 76vh;
+  display: grid;
+  place-items: center;
+  padding: $space-auth-block;
+  background-image:
+    linear-gradient(rgba(16, 42, 47, 0.52), rgba(16, 42, 47, 0.52)),
+    url("https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1600&q=80");
+  background-size: cover;
+  background-position: center;
+}
+
+.loginShell {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 18px;
+  border-radius: $radius-card;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 28px;
+}
+
+.registrationSection {
+  margin: clamp(40px, 6vw, 90px) $space-page-inline;
+  border-radius: $radius-card;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 28px;
+}

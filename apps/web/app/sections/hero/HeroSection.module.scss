@@ -1,0 +1,70 @@
+@use "../../../styles" as *;
+@use "../../../styles/breakpoints" as breakpoints;
+
+.hero {
+  position: relative;
+  min-height: calc(100vh - 78px);
+  display: grid;
+  align-items: end;
+  padding: clamp(28px, 7vw, 96px);
+  overflow: hidden;
+
+  @include breakpoints.down(breakpoints.$tablet) {
+    min-height: 760px;
+  }
+}
+
+.media {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  filter: saturate(0.9);
+}
+
+.media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 31, 27, 0.87), rgba(7, 31, 27, 0.42)),
+    linear-gradient(0deg, rgba(7, 31, 27, 0.74), rgba(7, 31, 27, 0));
+}
+
+.hero[dir="rtl"] .media::after {
+  background:
+    linear-gradient(270deg, rgba(7, 31, 27, 0.87), rgba(7, 31, 27, 0.42)),
+    linear-gradient(0deg, rgba(7, 31, 27, 0.74), rgba(7, 31, 27, 0));
+}
+
+.content {
+  position: relative;
+  max-width: 860px;
+  display: grid;
+  gap: 18px;
+  color: $color-surface;
+}
+
+.content p {
+  color: $color-accent-soft;
+  font-weight: 900;
+}
+
+.content h1 {
+  font-size: clamp(42px, 6vw, 84px);
+  line-height: 1.04;
+}
+
+.content span {
+  max-width: 760px;
+  color: #e5efec;
+  font-size: clamp(18px, 2vw, 25px);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}

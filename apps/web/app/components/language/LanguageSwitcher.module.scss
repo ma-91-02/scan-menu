@@ -1,0 +1,21 @@
+@use "../../../styles" as *;
+
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: $color-surface;
+  font-size: 20px;
+}
+
+.switcher select {
+  min-width: 210px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: $radius-control;
+  padding: 10px 12px;
+  background: rgba(15, 38, 34, 0.72);
+  color: $color-surface;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+}

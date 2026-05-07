@@ -288,6 +288,7 @@ export default function RestaurantDashboardPage() {
   const [editingItemId, setEditingItemId] = useState("");
   const [restaurantCurrency, setRestaurantCurrency] = useState("USD");
   const [activeCategoryId, setActiveCategoryId] = useState("");
+  const [isDishFormOpen, setIsDishFormOpen] = useState(false);
   const [showCategorySearch, setShowCategorySearch] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [currencySearch, setCurrencySearch] = useState("");
@@ -527,6 +528,7 @@ export default function RestaurantDashboardPage() {
 
   function resetMenuForm() {
     setEditingItemId("");
+    setIsDishFormOpen(false);
     setForm({ name: "", description: "", imageUrl: "", price: "0", categoryId: activeCategoryId || categories[0]?.id || "", ingredientIds: [] });
   }
 
@@ -534,6 +536,7 @@ export default function RestaurantDashboardPage() {
     const categoryId = item.categoryId || activeCategoryId || categories[0]?.id || "";
     setEditingItemId(item.id);
     setActiveCategoryId(categoryId);
+    setIsDishFormOpen(true);
     setRestaurantCurrency(item.currency || restaurantCurrency);
     setForm({
       name: item.displayName,
@@ -710,6 +713,7 @@ export default function RestaurantDashboardPage() {
   function startAddDish(categoryId: string) {
     setEditingItemId("");
     setActiveCategoryId(categoryId);
+    setIsDishFormOpen(true);
     setForm({ name: "", description: "", imageUrl: "", price: "0", categoryId, ingredientIds: [] });
     setIngredientSearch("");
   }
@@ -865,7 +869,7 @@ export default function RestaurantDashboardPage() {
                           <button className="danger" type="button" onClick={() => void deleteCategory(category.id)}>{tt("restaurant.delete_section", "Delete section")}</button>
                         </div>
                       </header>
-                      {activeCategoryId === category.id ? renderMenuItemForm() : null}
+                      {isDishFormOpen && activeCategoryId === category.id ? renderMenuItemForm() : null}
                       {sectionItems.length ? (
 	                        <div className="menu-dish-list">
 	                          {sectionItems.map((item) => (

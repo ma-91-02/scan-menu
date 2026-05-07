@@ -1,3 +1,5 @@
+@use "../styles" as *;
+
 :root {
   color-scheme: light;
   --bg: #f7f4ef;
@@ -19,10 +21,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family:
-    Arial,
-    "Helvetica Neue",
-    sans-serif;
+  font-family: Arial, "Helvetica Neue", sans-serif;
 }
 
 html {
@@ -265,7 +264,11 @@ h2 {
   place-items: start center;
   padding: 28px 12px;
   background:
-    radial-gradient(circle at top left, rgba(18, 107, 93, 0.18), transparent 28%),
+    radial-gradient(
+      circle at top left,
+      rgba(18, 107, 93, 0.18),
+      transparent 28%
+    ),
     #e9eee9;
   color: #182420;
 }

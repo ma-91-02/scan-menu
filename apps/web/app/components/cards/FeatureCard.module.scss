@@ -1,0 +1,25 @@
+@use "../../../styles" as *;
+
+.card {
+  @include card-shell;
+  overflow: hidden;
+}
+
+.image {
+  min-height: 220px;
+  background-size: cover;
+  background-position: center;
+}
+
+.body {
+  padding: 20px;
+}
+
+.body h3 {
+  font-size: 25px;
+}
+
+.body p {
+  color: $color-text-muted;
+  line-height: 1.6;
+}

@@ -1,0 +1,6 @@
+@use "../../../styles" as *;
+
+.card {
+  @include card-shell($color-surface-soft);
+  padding: 18px;
+}

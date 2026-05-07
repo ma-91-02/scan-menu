@@ -1,0 +1,31 @@
+@use "./tokens" as tokens;
+@use "./breakpoints" as breakpoints;
+
+@mixin section-shell {
+  padding: tokens.$space-section-block tokens.$space-page-inline;
+}
+
+@mixin card-shell($background: tokens.$color-surface) {
+  border: 1px solid tokens.$color-border;
+  border-radius: tokens.$radius-card;
+  background: $background;
+}
+
+@mixin form-control {
+  height: 46px;
+  border: 1px solid tokens.$color-border-strong;
+  border-radius: tokens.$radius-control;
+  padding: 10px 12px;
+  background: tokens.$color-surface;
+  font: inherit;
+}
+
+@mixin responsive-grid($columns) {
+  display: grid;
+  grid-template-columns: $columns;
+  gap: 18px;
+
+  @include breakpoints.down(breakpoints.$tablet) {
+    grid-template-columns: 1fr;
+  }
+}

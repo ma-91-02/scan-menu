@@ -1,0 +1,33 @@
+@use "../../../styles" as *;
+
+.section {
+  @include section-shell;
+  background: $color-surface;
+}
+
+.grid {
+  @include responsive-grid(repeat(3, minmax(0, 1fr)));
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border: 1px solid $color-border;
+  border-radius: $radius-card;
+  padding: 24px;
+  background: $color-surface-soft;
+}
+
+.card > span {
+  font-size: 34px;
+}
+
+.card h3 {
+  font-size: 25px;
+}
+
+.card p {
+  color: $color-text-muted;
+  line-height: 1.7;
+}

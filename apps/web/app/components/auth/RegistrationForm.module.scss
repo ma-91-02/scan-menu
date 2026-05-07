@@ -1,0 +1,126 @@
+@use "../../../styles" as *;
+@use "../../../styles/breakpoints" as breakpoints;
+
+.form {
+  display: grid;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 28px;
+  margin: 24px 0;
+
+  @include breakpoints.down(breakpoints.$tablet) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form label {
+  display: grid;
+  gap: 8px;
+  color: #2e5a51;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.form input,
+.form select {
+  @include form-control;
+}
+
+.form button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.phoneRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.phoneRow span {
+  min-width: 74px;
+  height: 46px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid $color-border-strong;
+  border-radius: $radius-control;
+  background: $color-surface-muted;
+  color: #163f36;
+  font-weight: 900;
+}
+
+.suggestions {
+  display: grid;
+  gap: 6px;
+  max-height: 178px;
+  overflow: auto;
+  border: 1px solid $color-border;
+  border-radius: $radius-card;
+  padding: 6px;
+  background: #f8fbf9;
+}
+
+.suggestions button {
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: $color-surface;
+  color: #163f36;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: start;
+}
+
+.suggestions button:hover,
+.suggestions button:focus {
+  border-color: $color-accent;
+  background: #fff7eb;
+}
+
+.consentRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.consentRow input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  accent-color: #2e5a51;
+}
+
+.consentLinks {
+  display: inline-flex;
+  gap: 8px;
+  margin-inline-start: 4px;
+}
+
+.consentLinks a {
+  color: #163f36;
+  font-weight: 900;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.status {
+  min-height: 24px;
+  color: #163f36;
+  font-weight: 800;
+}

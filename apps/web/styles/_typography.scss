@@ -1,0 +1,9 @@
+@mixin section-title {
+  font-size: clamp(30px, 4vw, 56px);
+  line-height: 1.1;
+}
+
+@mixin body-copy {
+  font-size: 18px;
+  line-height: 1.7;
+}

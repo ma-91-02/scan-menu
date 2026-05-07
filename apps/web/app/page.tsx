@@ -1,5 +1,24 @@
 import { getLanguages, getPublicPage } from "../lib/api";
-import { LanguageBootstrap, LanguageSelect, LoginForm, RegistrationForm } from "./public-actions";
+import {
+  LoginSection,
+  RegistrationSection,
+} from "./components/auth/AuthSections";
+import { LoginForm } from "./components/auth/LoginForm";
+import { RegistrationForm } from "./components/auth/RegistrationForm";
+import { LanguageBootstrap } from "./components/language/LanguageBootstrap";
+import { PublicHeader } from "./components/layout/PublicHeader";
+import { FeaturesSection } from "./sections/features/FeaturesSection";
+import { HeroSection } from "./sections/hero/HeroSection";
+import { PartnerNetworkSection } from "./sections/partner-network/PartnerNetworkSection";
+import { PricingSection } from "./sections/pricing/PricingSection";
+import { PublicDashboardPreview } from "./sections/public-dashboard-preview/PublicDashboardPreview";
+import { RestaurantPortalSection } from "./sections/restaurant-portal/RestaurantPortalSection";
+import {
+  buildLanguageOptions,
+  getPartnerContent,
+  getPublicFallbackCopy,
+} from "./lib/public-page";
+import styles from "./page.module.scss";
 
 interface PublicHomePageProps {
   searchParams?: Promise<{
@@ -7,241 +26,55 @@ interface PublicHomePageProps {
   }>;
 }
 
-export default async function PublicHomePage({ searchParams }: PublicHomePageProps) {
+export default async function PublicHomePage({
+  searchParams,
+}: PublicHomePageProps) {
   const params = await searchParams;
   const language = params?.lang ?? "en";
-  const [content, remoteLanguages] = await Promise.all([getPublicPage(language), getLanguages()]);
-  const isRtl = content.direction === "rtl";
-  const languages = remoteLanguages.map((item) => ({
-    code: String(item.code),
-    nativeName: item.nativeName,
-    flag: flagForLanguage(String(item.code))
-  }));
+  const [content, remoteLanguages] = await Promise.all([
+    getPublicPage(language),
+    getLanguages(),
+  ]);
+  const direction = content.direction === "rtl" ? "rtl" : "ltr";
+  const languages = buildLanguageOptions(remoteLanguages);
+  const fallbackCopy = getPublicFallbackCopy(language);
 
   return (
-    <main className="public-page" dir={isRtl ? "rtl" : "ltr"}>
+    <main className={styles.page} dir={direction}>
       <LanguageBootstrap fallbackLanguage={language} languages={languages} />
-      <header className="public-nav">
-        <a className="public-brand" href={`/?lang=${language}`}>
-          {content.brandName}
-        </a>
-
-        <nav className="public-links" aria-label="Public navigation">
-          <a href={`/?lang=${language}`}>{content.nav.home}</a>
-          <a href={`#pricing`}>{content.nav.pricing}</a>
-          <a href={`#about`}>{content.nav.about}</a>
-          <a href={`#login`}>{content.nav.login}</a>
-          <a href={`#registration`}>{content.nav.registration}</a>
-          <a href={`/customer?lang=${language}`}>{language === "ar" ? "طلب الزبون" : "Customer order"}</a>
-          <a href={`#restaurant`}>{content.nav.restaurant}</a>
-        </nav>
-
-        <LanguageSelect
-          currentLanguage={language}
-          languages={languages}
+      <PublicHeader
+        content={content}
+        customerOrderLabel={fallbackCopy.customerOrder}
+        language={language}
+        languages={languages}
+      />
+      <HeroSection direction={direction} hero={content.hero} />
+      <FeaturesSection about={content.about} cards={content.featureCards} />
+      <PricingSection
+        actionLabel={content.hero.primaryAction}
+        eyebrow={content.nav.pricing}
+        plans={content.pricing}
+        title={fallbackCopy.plansTitle}
+      />
+      <PublicDashboardPreview about={content.about} />
+      <RestaurantPortalSection
+        portal={content.restaurantPortal}
+        subtitle={content.hero.subtitle}
+      />
+      <PartnerNetworkSection content={getPartnerContent(language)} />
+      <LoginSection>
+        <LoginForm
+          loginLabel={content.nav.login}
+          preferredLanguage={language}
         />
-      </header>
-
-      <section className="public-hero">
-        <div className="hero-media" style={{ backgroundImage: `url(${content.hero.imageUrl})` }} />
-        <div className="hero-content">
-          <p>{content.hero.eyebrow}</p>
-          <h1>{content.hero.title}</h1>
-          <span>{content.hero.subtitle}</span>
-          <div className="hero-actions">
-            <a className="public-button primary" href="#registration">
-              {content.hero.primaryAction}
-            </a>
-            <a className="public-button secondary" href="#features">
-              {content.hero.secondaryAction}
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section className="public-band" id="features">
-        <div className="section-heading">
-          <span>Scan Menu</span>
-          <h2>{content.about.title}</h2>
-          <p>{content.about.body}</p>
-        </div>
-
-        <div className="feature-grid">
-          {content.featureCards.map((card) => (
-            <article className="feature-card" key={card.id}>
-              <div className="feature-image" style={{ backgroundImage: `url(${card.imageUrl})` }} />
-              <div>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="pricing-section" id="pricing">
-        <div className="section-heading">
-          <span>{content.nav.pricing}</span>
-          <h2>Scan Menu plans</h2>
-        </div>
-
-        <div className="pricing-grid">
-          {content.pricing.map((plan) => (
-            <article className="pricing-card" key={plan.id}>
-              <h3>{plan.name}</h3>
-              <strong>{plan.price}</strong>
-              <ul>
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-              <a className="public-button primary" href="#registration">
-                {content.hero.primaryAction}
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="about-section" id="about">
-        <h2>{content.about.title}</h2>
-        <p>{content.about.body}</p>
-      </section>
-
-      <section className="portal-section" id="restaurant">
-        <aside>
-          <h2>{content.restaurantPortal.title}</h2>
-          <p>{content.hero.subtitle}</p>
-        </aside>
-        <div className="portal-menu">
-          {content.restaurantPortal.menuItems.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
-        </div>
-      </section>
-
-      <section className="partner-section" id="partners">
-        <div className="section-heading">
-          <span>{partnerCopy(language).eyebrow}</span>
-          <h2>{partnerCopy(language).title}</h2>
-          <p>{partnerCopy(language).body}</p>
-        </div>
-
-        <div className="partner-grid">
-          {partnerCopy(language).cards.map((card) => (
-            <article className="partner-card" key={card.title}>
-              <span>{card.icon}</span>
-              <h3>{card.title}</h3>
-              <p>{card.body}</p>
-              <a className="public-button primary" href="#login">
-                {card.action}
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="auth-section" id="login">
-        <LoginForm loginLabel={content.nav.login} preferredLanguage={language} />
-      </section>
-
-      <section className="registration-section" id="registration">
+      </LoginSection>
+      <RegistrationSection>
         <RegistrationForm
           preferredLanguage={language}
           registrationLabel={content.nav.registration}
           restaurantLabel={content.nav.restaurant}
         />
-      </section>
+      </RegistrationSection>
     </main>
   );
-}
-
-function partnerCopy(language: string) {
-  if (language === "ar") {
-    return {
-      eyebrow: "شبكة شركاء Scan Menu",
-      title: "مسارات دخول واضحة لكل من يخدم المطاعم",
-      body:
-        "يمكن لسائقي التوصيل، المزارعين، وأصحاب البقالة أو الموردين الدخول بحساباتهم الخاصة ومتابعة الطلبات والعروض والتوريد حسب صلاحياتهم.",
-      cards: [
-        {
-          icon: "🚚",
-          title: "سائقو التوصيل",
-          body: "استلام طلبات التوصيل، تحديث الحالة، ومعرفة وجهات الطلبات من حساب واحد.",
-          action: "دخول السائق"
-        },
-        {
-          icon: "🌾",
-          title: "المزارعون",
-          body: "عرض المنتجات الطازجة للمطاعم، استقبال طلبات التوريد، ومتابعة الكميات.",
-          action: "دخول المزارع"
-        },
-        {
-          icon: "🛒",
-          title: "البقالات والموردون",
-          body: "إدارة كتالوج المواد، عروض التوريد، ومتابعة طلبات المطاعم اليومية.",
-          action: "دخول المورد"
-        }
-      ]
-    };
-  }
-
-  return {
-    eyebrow: "Scan Menu partner network",
-    title: "Dedicated access for everyone who serves restaurants",
-    body:
-      "Delivery drivers, farmers, grocery owners, and suppliers can sign in to role-based workspaces for deliveries, supply, and restaurant procurement.",
-    cards: [
-      {
-        icon: "🚚",
-        title: "Delivery drivers",
-        body: "Receive delivery tasks, update progress, and track destinations from one account.",
-        action: "Driver login"
-      },
-      {
-        icon: "🌾",
-        title: "Farmers",
-        body: "Offer fresh products to restaurants, receive supply requests, and manage quantities.",
-        action: "Farmer login"
-      },
-      {
-        icon: "🛒",
-        title: "Grocers and suppliers",
-        body: "Manage item catalogs, supplier offers, and restaurant purchase requests.",
-        action: "Supplier login"
-      }
-    ]
-  };
-}
-
-function flagForLanguage(language: string) {
-  const flags: Record<string, string> = {
-    ar: "🇸🇦",
-    en: "🇺🇸",
-    ru: "🇷🇺",
-    tr: "🇹🇷",
-    fr: "🇫🇷",
-    es: "🇪🇸",
-    de: "🇩🇪",
-    it: "🇮🇹",
-    pt: "🇵🇹",
-    zh: "🇨🇳",
-    ja: "🇯🇵",
-    ko: "🇰🇷",
-    hi: "🇮🇳",
-    ur: "🇵🇰",
-    fa: "🇮🇷",
-    he: "🇮🇱",
-    id: "🇮🇩",
-    ms: "🇲🇾",
-    uk: "🇺🇦",
-    pl: "🇵🇱",
-    nl: "🇳🇱",
-    sv: "🇸🇪",
-    el: "🇬🇷",
-    vi: "🇻🇳",
-    th: "🇹🇭"
-  };
-
-  return flags[language] ?? "🌐";
 }

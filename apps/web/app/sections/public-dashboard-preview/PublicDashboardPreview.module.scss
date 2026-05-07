@@ -1,0 +1,23 @@
+@use "../../../styles" as *;
+@use "../../../styles/typography" as typography;
+
+.section {
+  min-height: 55vh;
+  display: grid;
+  align-content: center;
+  padding: $space-section-block $space-page-inline;
+  background: $color-surface;
+  text-align: center;
+}
+
+.section h2 {
+  @include typography.section-title;
+}
+
+.section p {
+  max-width: 860px;
+  margin: 16px auto 0;
+  color: $color-text-muted;
+  font-size: 18px;
+  line-height: 1.7;
+}

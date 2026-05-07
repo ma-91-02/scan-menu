@@ -1,0 +1,10 @@
+@use "../../../styles" as *;
+
+.section {
+  @include section-shell;
+  background: $color-surface-band;
+}
+
+.grid {
+  @include responsive-grid(repeat(3, minmax(0, 1fr)));
+}

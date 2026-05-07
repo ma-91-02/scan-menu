@@ -1,0 +1,7 @@
+@use "../../../styles" as *;
+
+.message {
+  color: $color-text-strong;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.6;
+}

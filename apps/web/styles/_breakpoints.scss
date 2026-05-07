@@ -1,0 +1,9 @@
+$desktop: 1180px;
+$tablet: 980px;
+$mobile: 680px;
+
+@mixin down($width) {
+  @media (max-width: $width) {
+    @content;
+  }
+}

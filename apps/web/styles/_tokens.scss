@@ -1,0 +1,24 @@
+$color-brand: #126b5d;
+$color-brand-dark: #102a2f;
+$color-brand-deep: #071f1b;
+$color-text: #172622;
+$color-text-strong: #10231f;
+$color-text-muted: #49605a;
+$color-surface: #ffffff;
+$color-surface-soft: #f4faf7;
+$color-surface-muted: #eef5f1;
+$color-surface-band: #edf6f2;
+$color-border: #d4e2dd;
+$color-border-strong: #41675e;
+$color-accent: #eeab4f;
+$color-accent-soft: #f3b65f;
+$color-danger: #b42318;
+
+$radius-card: 8px;
+$radius-control: 8px;
+
+$shadow-card: 0 24px 70px rgba(16, 42, 47, 0.28);
+
+$space-page-inline: clamp(18px, 6vw, 120px);
+$space-section-block: clamp(50px, 7vw, 104px);
+$space-auth-block: clamp(24px, 5vw, 72px);

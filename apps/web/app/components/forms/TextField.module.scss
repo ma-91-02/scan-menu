@@ -1,0 +1,14 @@
+@use "../../../styles" as *;
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #2e5a51;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.field input,
+.field select {
+  @include form-control;
+}

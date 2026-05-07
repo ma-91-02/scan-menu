@@ -1,0 +1,25 @@
+@use "../../../styles" as *;
+
+.button {
+  border-radius: $radius-control;
+  padding: 13px 18px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.primary {
+  background: $color-accent;
+  color: $color-text;
+}
+
+.secondary {
+  border: 1px solid rgba(255, 255, 255, 0.44);
+  color: $color-surface;
+}
+
+.wide {
+  display: flex;
+  justify-content: center;
+  width: min(560px, 100%);
+  margin: 0 auto;
+}

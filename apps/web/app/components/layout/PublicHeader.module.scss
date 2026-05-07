@@ -1,0 +1,52 @@
+@use "../../../styles" as *;
+@use "../../../styles/breakpoints" as breakpoints;
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 22px;
+  padding: 12px $space-page-inline;
+  background: rgba(39, 82, 72, 0.96);
+  color: $color-surface;
+
+  @include breakpoints.down(breakpoints.$tablet) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.brand {
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  @include breakpoints.down(breakpoints.$tablet) {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+}
+
+.links a {
+  border-radius: $radius-control;
+  padding: 10px 13px;
+  background: rgba(15, 38, 34, 0.72);
+  color: $color-surface;
+  font-weight: 700;
+}
+
+.links a:hover,
+.links a:focus {
+  background: $color-accent;
+  color: #182b26;
+}
