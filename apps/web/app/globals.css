@@ -1681,7 +1681,7 @@ h2 {
 .owner-topbar {
   display: grid;
   align-items: stretch;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 220px) minmax(280px, 420px);
+  grid-template-columns: minmax(180px, 1fr) minmax(280px, 420px);
   gap: 18px;
   max-width: 100%;
   border-radius: 10px;
@@ -1905,6 +1905,32 @@ h2 {
   border-radius: 8px;
   padding: 16px;
   background: #f8fbfa;
+}
+
+.inline-menu-builder {
+  margin: 0 0 16px;
+}
+
+.settings-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.owner-settings-control {
+  display: grid;
+  gap: 7px;
+  color: #3d6257;
+  font-weight: 900;
+}
+
+.owner-settings-control select {
+  min-height: 44px;
+  border: 1px solid #aac1b8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #13251f;
+  font: inherit;
 }
 
 .currency-select-row {

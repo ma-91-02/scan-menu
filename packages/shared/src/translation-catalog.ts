@@ -395,6 +395,7 @@ export const menuSectionTaxonomy: MenuSectionTaxonomyItem[] = [
 
 export const uiTranslations: TranslationCatalogItem[] = [
   { key: "restaurant.menu", translations: tx("Menu", { ar: "المنيو", ru: "Меню", tr: "Menü", fr: "Menu", es: "Menú", de: "Speisekarte" }) },
+  { key: "restaurant.settings", translations: tx("Settings", { ar: "الإعدادات", ru: "Настройки", tr: "Ayarlar", fr: "Paramètres", es: "Configuración", de: "Einstellungen", fa: "تنظیمات" }) },
   { key: "restaurant.add_section", translations: tx("Add section", { ar: "إضافة قسم", ru: "Добавить раздел", tr: "Bölüm ekle", fr: "Ajouter une section", es: "Añadir sección", de: "Bereich hinzufügen" }) },
   { key: "restaurant.add_dish", translations: tx("Add dish", { ar: "إضافة طبق", ru: "Добавить блюдо", tr: "Yemek ekle", fr: "Ajouter un plat", es: "Añadir plato", de: "Gericht hinzufügen" }) },
   { key: "restaurant.logout", translations: tx("Logout", { ar: "تسجيل الخروج", ru: "Выйти", tr: "Çıkış", fr: "Déconnexion", es: "Cerrar sesión", de: "Abmelden" }) },

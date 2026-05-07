@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supportedLanguages, type SupportedLanguage } from "@scanmenu/shared";
 
-type TabId = "menu" | "cashier" | "kitchen" | "employees" | "tables" | "plans" | "profile";
+type TabId = "menu" | "cashier" | "kitchen" | "employees" | "tables" | "plans" | "profile" | "settings";
 
 interface CatalogEntry {
   id: string;
@@ -136,6 +136,7 @@ const copy = {
     tables: "الطاولات و QR",
     plans: "الاشتراك",
     profile: "الملف الشخصي",
+    settings: "الإعدادات",
     language: "لغة المطعم",
     add: "إضافة",
     save: "حفظ",
@@ -170,6 +171,7 @@ const copy = {
     tables: "Tables & QR",
     plans: "Subscription",
     profile: "Profile",
+    settings: "Settings",
     language: "Restaurant language",
     add: "Add",
     save: "Save",
@@ -204,6 +206,7 @@ const copy = {
     tables: "Столы и QR",
     plans: "Подписка",
     profile: "Профиль",
+    settings: "Настройки",
     language: "Язык ресторана",
     add: "Добавить",
     save: "Сохранить",
@@ -238,6 +241,7 @@ const copy = {
     tables: "Masalar ve QR",
     plans: "Abonelik",
     profile: "Profil",
+    settings: "Ayarlar",
     language: "Restoran dili",
     add: "Ekle",
     save: "Kaydet",
@@ -311,7 +315,8 @@ export default function RestaurantDashboardPage() {
     { id: "employees" as const, label: tt("restaurant.employees", t.employees) },
     { id: "tables" as const, label: tt("restaurant.tables_qr", t.tables) },
     { id: "plans" as const, label: tt("restaurant.subscription", t.plans) },
-    { id: "profile" as const, label: tt("restaurant.profile", t.profile) }
+    { id: "profile" as const, label: tt("restaurant.profile", t.profile) },
+    { id: "settings" as const, label: tt("restaurant.settings", t.settings) }
   ];
   const tabs = allTabs.filter((tab) => canSeeTab(role, tab.id));
   const activeOrders = useMemo(() => orders.filter((order) => !["completed", "cancelled"].includes(order.status)), [orders]);
@@ -697,6 +702,91 @@ export default function RestaurantDashboardPage() {
     }
   }
 
+  function openDishForm(categoryId: string) {
+    setActiveCategoryId(categoryId);
+    setForm((current) => ({ ...current, categoryId }));
+  }
+
+  function startAddDish(categoryId: string) {
+    setEditingItemId("");
+    setActiveCategoryId(categoryId);
+    setForm({ name: "", description: "", imageUrl: "", price: "0", categoryId, ingredientIds: [] });
+    setIngredientSearch("");
+  }
+
+  function renderCurrencySettings() {
+    return (
+      <label className="currency-select-row">
+        {tt("restaurant.currency", "Restaurant currency")}
+        <input
+          placeholder={tt("restaurant.currency_search", "Search currency")}
+          value={currencySearch}
+          onChange={(event) => setCurrencySearch(event.target.value)}
+        />
+        {visibleCurrencyResults.length ? (
+          <div className="currency-result-list">
+            {visibleCurrencyResults.map((code) => (
+              <button key={code} type="button" onClick={() => void updateRestaurantCurrency(code)}>
+                {currencyLabel(code, ownerLanguage)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <select value={restaurantCurrency} onChange={(event) => void updateRestaurantCurrency(event.target.value)}>
+          {fallbackCurrencyCodes.map((code) => (
+            <option key={code} value={code}>{currencyLabel(code, ownerLanguage)}</option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  function renderMenuItemForm() {
+    return (
+      <div className="menu-builder inline-menu-builder">
+        <label>{tt("restaurant.item_name", t.itemName)}<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+        <label>{tt("restaurant.description", t.description)}<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+        <label className="file-upload-control">
+          {tt("restaurant.upload_dish_image", tt("restaurant.image_url", t.imageUrl))}
+          <input type="file" accept="image/*" onChange={(event) => void handleDishImageUpload(event.target.files?.[0])} />
+          {form.imageUrl ? <img alt="" className="menu-image-preview" src={form.imageUrl} /> : null}
+        </label>
+        <label>{tt("restaurant.price", t.price)}<input type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></label>
+        <label>{tt("restaurant.section", "Section")}<select value={form.categoryId} onChange={(event) => openDishForm(event.target.value)}>{categories.map((category) => <option key={category.id} value={category.id}>{category.displayName}</option>)}</select></label>
+        <div className="ingredient-picker">
+          <label>{tt("restaurant.ingredients", t.ingredients)}<input placeholder={tt("restaurant.search_ingredient", t.ingredientSearch)} value={ingredientSearch} onChange={(event) => setIngredientSearch(event.target.value)} /></label>
+          {selectedIngredients.length ? (
+            <div className="selected-ingredient-list">
+              {selectedIngredients.map((ingredient) => (
+                <button key={ingredient.id} type="button" onClick={() => setForm((current) => ({ ...current, ingredientIds: current.ingredientIds.filter((id) => id !== ingredient.id) }))}>
+                  {ingredient.displayName} ×
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="catalog-suggestion-list ingredient-suggestions">
+            {visibleIngredients.map((ingredient) => (
+              <button key={ingredient.id} type="button" onClick={() => {
+                setForm((current) => ({ ...current, ingredientIds: [...new Set([...current.ingredientIds, ingredient.id])] }));
+                setIngredientSearch("");
+              }}>
+                + {ingredient.displayName}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="menu-form-actions">
+          <button type="button" onClick={() => void saveMenuItem()}>
+            {editingItemId ? tt("restaurant.save_dish", tt("common.save", t.save)) : tt("common.add", t.add)}
+          </button>
+          {editingItemId ? (
+            <button className="muted" type="button" onClick={resetMenuForm}>{tt("restaurant.cancel_edit", t.cancel)}</button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main className="restaurant-console" dir={["ar", "ur", "fa", "he"].includes(ownerLanguage) ? "rtl" : "ltr"}>
       <aside className="restaurant-sidebar compact-owner-sidebar">
@@ -719,16 +809,6 @@ export default function RestaurantDashboardPage() {
             <h1>{tabs.find((tab) => tab.id === activeTab)?.label}</h1>
             <span>{profile.name}</span>
           </div>
-          <div className="owner-language-controls">
-            <label>
-              {tt("restaurant.language", t.language)}
-              <select value={ownerLanguage} onChange={(event) => void updateOwnerLanguage(event.target.value)}>
-                {languages.map((language) => (
-                  <option key={language.code} value={language.code}>{language.nativeName}</option>
-                ))}
-              </select>
-            </label>
-          </div>
           <div className="owner-stats">
             <span>{tt("restaurant.kitchen", t.kitchen)} <strong>{kitchenOrders.length}</strong></span>
             <span>{tt("restaurant.waiter_requests", t.waiter)} <strong>{waiterRequests.length}</strong></span>
@@ -742,28 +822,6 @@ export default function RestaurantDashboardPage() {
                 <h2>{tt("restaurant.menu", t.menu)}</h2>
                 <button className="section-add-button" type="button" onClick={() => setShowCategorySearch((value) => !value)}>+ {tt("restaurant.add_section", t.addCategory)}</button>
               </div>
-              <label className="currency-select-row">
-                {tt("restaurant.currency", "Restaurant currency")}
-                <input
-                  placeholder={tt("restaurant.currency_search", "Search currency")}
-                  value={currencySearch}
-                  onChange={(event) => setCurrencySearch(event.target.value)}
-                />
-                {visibleCurrencyResults.length ? (
-                  <div className="currency-result-list">
-                    {visibleCurrencyResults.map((code) => (
-                      <button key={code} type="button" onClick={() => void updateRestaurantCurrency(code)}>
-                        {currencyLabel(code, ownerLanguage)}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <select value={restaurantCurrency} onChange={(event) => void updateRestaurantCurrency(event.target.value)}>
-                  {fallbackCurrencyCodes.map((code) => (
-                    <option key={code} value={code}>{currencyLabel(code, ownerLanguage)}</option>
-                  ))}
-                </select>
-              </label>
               {showCategorySearch ? (
                 <div className="catalog-search-panel">
                   <input
@@ -786,73 +844,12 @@ export default function RestaurantDashboardPage() {
                   </div>
                 </div>
               ) : null}
-              <div className="category-board">
-                {categories.map((category) => (
-                  <button
-                    className={activeCategoryId === category.id ? "active" : ""}
-                    key={category.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveCategoryId(category.id);
-                      setForm((current) => ({ ...current, categoryId: category.id }));
-                    }}
-                  >
-                    <span>{category.displayName}</span>
-                    <strong>+ {tt("restaurant.add_dish", t.addItemToCategory)}</strong>
-                  </button>
-                ))}
-              </div>
-              {categories.length ? (
-                <div className="menu-builder">
-                  <label>{tt("restaurant.item_name", t.itemName)}<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
-                  <label>{tt("restaurant.description", t.description)}<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
-                  <label className="file-upload-control">
-                    {tt("restaurant.upload_dish_image", tt("restaurant.image_url", t.imageUrl))}
-                    <input type="file" accept="image/*" onChange={(event) => void handleDishImageUpload(event.target.files?.[0])} />
-                    {form.imageUrl ? <img alt="" className="menu-image-preview" src={form.imageUrl} /> : null}
-                  </label>
-                  <label>{tt("restaurant.price", t.price)}<input type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></label>
-                  <label>{tt("restaurant.section", "Section")}<select value={form.categoryId} onChange={(event) => {
-                    setActiveCategoryId(event.target.value);
-                    setForm({ ...form, categoryId: event.target.value });
-                  }}>{categories.map((category) => <option key={category.id} value={category.id}>{category.displayName}</option>)}</select></label>
-                  <div className="ingredient-picker">
-                    <label>{tt("restaurant.ingredients", t.ingredients)}<input placeholder={tt("restaurant.search_ingredient", t.ingredientSearch)} value={ingredientSearch} onChange={(event) => setIngredientSearch(event.target.value)} /></label>
-                    {selectedIngredients.length ? (
-                      <div className="selected-ingredient-list">
-                        {selectedIngredients.map((ingredient) => (
-                          <button key={ingredient.id} type="button" onClick={() => setForm((current) => ({ ...current, ingredientIds: current.ingredientIds.filter((id) => id !== ingredient.id) }))}>
-                            {ingredient.displayName} ×
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="catalog-suggestion-list ingredient-suggestions">
-                      {visibleIngredients.map((ingredient) => (
-                        <button key={ingredient.id} type="button" onClick={() => {
-                          setForm((current) => ({ ...current, ingredientIds: [...new Set([...current.ingredientIds, ingredient.id])] }));
-                          setIngredientSearch("");
-                        }}>
-                          + {ingredient.displayName}
-                        </button>
-                      ))}
-	                    </div>
-	                  </div>
-	                  <div className="menu-form-actions">
-	                    <button type="button" onClick={() => void saveMenuItem()}>
-	                      {editingItemId ? tt("restaurant.save_dish", tt("common.save", t.save)) : tt("common.add", t.add)}
-	                    </button>
-	                    {editingItemId ? (
-	                      <button className="muted" type="button" onClick={resetMenuForm}>{tt("restaurant.cancel_edit", t.cancel)}</button>
-	                    ) : null}
-	                  </div>
-	                </div>
-	              ) : (
+              {!categories.length ? (
                 <div className="menu-empty-state">
                   <strong>{tt("restaurant.empty_sections_title", t.emptySectionsTitle)}</strong>
                   <p>{tt("restaurant.empty_sections_body", t.emptySectionsBody)}</p>
                 </div>
-              )}
+              ) : null}
 	              <div className="menu-section-list">
 	                {categories.map((category) => {
 	                  const sectionItems = menu.filter((item) => item.categoryId === category.id);
@@ -864,14 +861,12 @@ export default function RestaurantDashboardPage() {
 	                          <span>{sectionItems.length} {tt("restaurant.add_dish", t.addItemToCategory)}</span>
 	                        </div>
 	                        <div className="menu-section-actions">
-	                          <button type="button" onClick={() => {
-	                            setActiveCategoryId(category.id);
-	                            setForm((current) => ({ ...current, categoryId: category.id }));
-	                          }}>+ {tt("restaurant.add_dish", t.addItemToCategory)}</button>
-	                          <button className="danger" type="button" onClick={() => void deleteCategory(category.id)}>{tt("restaurant.delete_section", "Delete section")}</button>
-	                        </div>
-	                      </header>
-	                      {sectionItems.length ? (
+                          <button type="button" onClick={() => startAddDish(category.id)}>+ {tt("restaurant.add_dish", t.addItemToCategory)}</button>
+                          <button className="danger" type="button" onClick={() => void deleteCategory(category.id)}>{tt("restaurant.delete_section", "Delete section")}</button>
+                        </div>
+                      </header>
+                      {activeCategoryId === category.id ? renderMenuItemForm() : null}
+                      {sectionItems.length ? (
 	                        <div className="menu-dish-list">
 	                          {sectionItems.map((item) => (
 	                            <article className="menu-dish-card" key={item.id}>
@@ -1026,6 +1021,21 @@ export default function RestaurantDashboardPage() {
             ))}
             <button className="public-button primary wide" type="button" onClick={() => void saveProfile()}>{tt("common.save", t.save)}</button>
             <button className="danger-button wide" type="button" onClick={() => void deleteAccount()}>{tt("account.delete", t.deleteAccount)}</button>
+          </section>
+        ) : null}
+
+        {activeTab === "settings" ? (
+          <section className="owner-module-card settings-panel">
+            <h2>{tt("restaurant.settings", t.settings)}</h2>
+            <label className="owner-settings-control">
+              {tt("restaurant.language", t.language)}
+              <select value={ownerLanguage} onChange={(event) => void updateOwnerLanguage(event.target.value)}>
+                {languages.map((language) => (
+                  <option key={language.code} value={language.code}>{language.nativeName}</option>
+                ))}
+              </select>
+            </label>
+            {renderCurrencySettings()}
           </section>
         ) : null}
       </section>
