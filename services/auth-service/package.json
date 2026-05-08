@@ -1,5 +1,5 @@
 {
-  "name": "@scanmenu/auth-service",
+  "name": "@babili/auth-service",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,10 +8,10 @@
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "SCANMENU_SKIP_LISTEN=1 tsx --test src/*.test.ts"
+    "test": "BABILI_SKIP_LISTEN=1 tsx --test src/*.test.ts"
   },
   "dependencies": {
-    "@scanmenu/shared": "*",
+    "@babili/shared": "*",
     "@types/pg": "^8.20.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",

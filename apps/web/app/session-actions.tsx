@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { migrateLegacyStorageKey, storageKeys } from "./lib/storage-keys";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const sessionStorageKey = "scanmenu-session";
 
 interface SessionUser {
   name: string;
@@ -20,7 +20,7 @@ export function SessionBar({ expectedArea }: SessionBarProps) {
   const [status, setStatus] = useState("Checking session...");
 
   useEffect(() => {
-    const sessionId = localStorage.getItem(sessionStorageKey);
+    const sessionId = localStorage.getItem(migrateLegacyStorageKey("session"));
 
     if (!sessionId) {
       setStatus("No active session");
@@ -30,7 +30,7 @@ export function SessionBar({ expectedArea }: SessionBarProps) {
     fetch(`${apiUrl}/auth/session/${sessionId}`)
       .then(async (response) => {
         if (!response.ok) {
-          localStorage.removeItem(sessionStorageKey);
+          localStorage.removeItem(storageKeys.session);
           setStatus("Session expired");
           return;
         }
@@ -51,7 +51,7 @@ export function SessionBar({ expectedArea }: SessionBarProps) {
   }, [expectedArea]);
 
   async function logout() {
-    const sessionId = localStorage.getItem(sessionStorageKey);
+    const sessionId = localStorage.getItem(migrateLegacyStorageKey("session"));
 
     if (sessionId) {
       await fetch(`${apiUrl}/auth/logout`, {
@@ -61,7 +61,7 @@ export function SessionBar({ expectedArea }: SessionBarProps) {
       }).catch(() => undefined);
     }
 
-    localStorage.removeItem(sessionStorageKey);
+    localStorage.removeItem(storageKeys.session);
     window.location.href = "/";
   }
 

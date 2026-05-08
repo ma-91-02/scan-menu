@@ -2,14 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import type { LanguageOption } from "../../lib/public-page";
+import { storageKeys } from "../../lib/storage-keys";
 import styles from "./LanguageSwitcher.module.scss";
 
 interface LanguageSelectProps {
   currentLanguage: string;
   languages: LanguageOption[];
 }
-
-const languageStorageKey = "scanmenu-language";
 
 export function LanguageSelect({
   currentLanguage,
@@ -24,7 +23,7 @@ export function LanguageSelect({
         aria-label="Choose language"
         value={currentLanguage}
         onChange={(event) => {
-          localStorage.setItem(languageStorageKey, event.target.value);
+          localStorage.setItem(storageKeys.language, event.target.value);
           router.push(`/?lang=${event.target.value}`);
         }}
       >

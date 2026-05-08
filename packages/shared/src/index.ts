@@ -29,6 +29,10 @@ export type LocalizedText = Partial<Record<string, string>>;
 
 export type UserRole =
   | "platform_owner"
+  | "platform_admin"
+  | "support_agent"
+  | "finance_admin"
+  | "translation_manager"
   | "restaurant_owner"
   | "accountant"
   | "staff"

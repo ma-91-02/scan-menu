@@ -7,7 +7,7 @@ let server: Server;
 let baseUrl: string;
 
 before(() => {
-  process.env.SCANMENU_DISABLE_EMAIL = "true";
+  process.env.BABILI_DISABLE_EMAIL = "true";
   server = createApp().listen(0);
   const address = server.address();
 
@@ -24,7 +24,7 @@ test("registration fails without privacy/terms acceptance", async () => {
     name: "Consent Test",
     email: uniqueEmail("consent"),
     password: "password123",
-    preferredLanguage: "ar"
+    preferredLanguage: "ar",
   });
   const payload = await response.json();
 
@@ -39,7 +39,7 @@ test("register customer creates unverified user and hides passwordHash", async (
     password: "password123",
     preferredLanguage: "ar",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const payload = await response.json();
 
@@ -63,7 +63,7 @@ test("register restaurant owner creates user, restaurant, and owner staff link",
     restaurantName: "Owner Bistro",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const payload = await response.json();
 
@@ -83,10 +83,13 @@ test("login fails before email verification, then verify email succeeds", async 
     password: "password123",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const registrationPayload = await register.json();
-  const blockedLogin = await post("/login", { identifier: email, password: "password123" });
+  const blockedLogin = await post("/login", {
+    identifier: email,
+    password: "password123",
+  });
   const blockedPayload = await blockedLogin.json();
 
   assert.equal(blockedLogin.status, 403);
@@ -94,12 +97,17 @@ test("login fails before email verification, then verify email succeeds", async 
   assert.equal(blockedPayload.code, "EMAIL_VERIFICATION_REQUIRED");
   assert.equal(blockedPayload.data.requiresEmailVerification, true);
 
-  const verify = await fetch(`${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`);
+  const verify = await fetch(
+    `${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`,
+  );
   const verifyPayload = await verify.json();
   assert.equal(verify.status, 200);
   assert.equal(verifyPayload.data.ok, true);
 
-  const login = await post("/login", { identifier: email, password: "password123" });
+  const login = await post("/login", {
+    identifier: email,
+    password: "password123",
+  });
   const loginPayload = await login.json();
   assert.equal(login.status, 200);
   assert.equal(loginPayload.data.user.emailVerified, true);
@@ -115,10 +123,12 @@ test("expired verification token fails", async () => {
     preferredLanguage: "en",
     acceptedTerms: true,
     acceptedPrivacy: true,
-    debugVerificationExpiresAt: new Date(Date.now() - 1000).toISOString()
+    debugVerificationExpiresAt: new Date(Date.now() - 1000).toISOString(),
   });
   const payload = await register.json();
-  const verify = await fetch(`${baseUrl}/verify-email?token=${payload.data.debug.emailVerificationToken}`);
+  const verify = await fetch(
+    `${baseUrl}/verify-email?token=${payload.data.debug.emailVerificationToken}`,
+  );
 
   assert.equal(verify.status, 400);
 });
@@ -131,13 +141,15 @@ test("resend verification works without leaking account existence", async () => 
     password: "password123",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   await register.json();
 
   const response = await post("/resend-verification", { email });
   const payload = await response.json();
-  const missing = await post("/resend-verification", { email: uniqueEmail("missing") });
+  const missing = await post("/resend-verification", {
+    email: uniqueEmail("missing"),
+  });
 
   assert.equal(response.status, 200);
   assert.equal(payload.data.ok, true);
@@ -153,7 +165,7 @@ test("registering again with an unverified email resends verification instead of
     password: "password123",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   assert.equal(first.status, 201);
 
@@ -163,7 +175,7 @@ test("registering again with an unverified email resends verification instead of
     password: "password123",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const payload = await second.json();
 
@@ -180,7 +192,7 @@ test("registering again with an unverified email updates the pending password", 
     password: "old-password",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   assert.equal(first.status, 201);
 
@@ -190,13 +202,21 @@ test("registering again with an unverified email updates the pending password", 
     password: "new-password",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const secondPayload = await second.json();
-  await fetch(`${baseUrl}/verify-email?token=${secondPayload.data.debug.emailVerificationToken}`);
+  await fetch(
+    `${baseUrl}/verify-email?token=${secondPayload.data.debug.emailVerificationToken}`,
+  );
 
-  const oldLogin = await post("/login", { identifier: email, password: "old-password" });
-  const newLogin = await post("/login", { identifier: email, password: "new-password" });
+  const oldLogin = await post("/login", {
+    identifier: email,
+    password: "old-password",
+  });
+  const newLogin = await post("/login", {
+    identifier: email,
+    password: "new-password",
+  });
 
   assert.equal(second.status, 202);
   assert.equal(oldLogin.status, 401);
@@ -211,12 +231,17 @@ test("forgot password creates reset token and reset changes password", async () 
     password: "old-password",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const registrationPayload = await register.json();
-  await fetch(`${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`);
+  await fetch(
+    `${baseUrl}/verify-email?token=${registrationPayload.data.debug.emailVerificationToken}`,
+  );
 
-  const oldLogin = await post("/login", { identifier: email, password: "old-password" });
+  const oldLogin = await post("/login", {
+    identifier: email,
+    password: "old-password",
+  });
   assert.equal(oldLogin.status, 200);
 
   const forgot = await post("/forgot-password", { email });
@@ -226,21 +251,27 @@ test("forgot password creates reset token and reset changes password", async () 
 
   const reset = await post("/reset-password", {
     token: forgotPayload.data.debug.passwordResetToken,
-    newPassword: "new-password"
+    newPassword: "new-password",
   });
   assert.equal(reset.status, 200);
 
-  const oldPasswordLogin = await post("/login", { identifier: email, password: "old-password" });
+  const oldPasswordLogin = await post("/login", {
+    identifier: email,
+    password: "old-password",
+  });
   assert.equal(oldPasswordLogin.status, 401);
 
-  const newPasswordLogin = await post("/login", { identifier: email, password: "new-password" });
+  const newPasswordLogin = await post("/login", {
+    identifier: email,
+    password: "new-password",
+  });
   assert.equal(newPasswordLogin.status, 200);
 });
 
 test("staff creation requires owner or manager and links staff to restaurantId", async () => {
   const ownerLogin = await post("/login", {
     identifier: "owner@bistro.local",
-    password: "password"
+    password: "password",
   });
   const ownerPayload = await ownerLogin.json();
 
@@ -248,20 +279,23 @@ test("staff creation requires owner or manager and links staff to restaurantId",
     name: "Unauthorized Staff",
     email: uniqueEmail("unauthorized"),
     role: "viewer",
-    restaurantId: "rst_bistro_01"
+    restaurantId: "rst_bistro_01",
   });
   assert.equal(unauthorized.status, 401);
 
   const staff = await fetch(`${baseUrl}/restaurants/rst_bistro_01/staff`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-session-id": ownerPayload.data.session.id },
+    headers: {
+      "Content-Type": "application/json",
+      "x-session-id": ownerPayload.data.session.id,
+    },
     body: JSON.stringify({
       name: "Kitchen User",
       email: uniqueEmail("kitchen"),
       username: uniqueUsername("kitchen"),
       staffRole: "kitchen",
-      preferredLanguage: "ru"
-    })
+      preferredLanguage: "ru",
+    }),
   });
   const payload = await staff.json();
 
@@ -269,17 +303,21 @@ test("staff creation requires owner or manager and links staff to restaurantId",
   assert.equal(payload.data.user.role, "staff");
   assert.equal(payload.data.user.staffRole, "kitchen");
   assert.equal(payload.data.user.restaurantId, "rst_bistro_01");
-  assert.deepEqual(payload.data.user.permissions, ["orders:read", "orders:update", "kitchen:read"]);
+  assert.deepEqual(payload.data.user.permissions, [
+    "orders:read",
+    "orders:update",
+    "kitchen:read",
+  ]);
 });
 
 test("user cannot access another restaurant staff data", async () => {
   const ownerLogin = await post("/login", {
     identifier: "owner@bistro.local",
-    password: "password"
+    password: "password",
   });
   const ownerPayload = await ownerLogin.json();
   const response = await fetch(`${baseUrl}/restaurants/rst_other/staff`, {
-    headers: { "x-session-id": ownerPayload.data.session.id }
+    headers: { "x-session-id": ownerPayload.data.session.id },
   });
 
   assert.equal(response.status, 403);
@@ -287,8 +325,8 @@ test("user cannot access another restaurant staff data", async () => {
 
 test("password hash is used and never returned from login", async () => {
   const login = await post("/login", {
-    identifier: "customer@scanmenu.local",
-    password: "password"
+    identifier: "customer@babili.local",
+    password: "password",
   });
   const payload = await login.json();
 
@@ -305,17 +343,22 @@ test("authenticated user can delete own account and old session stops working", 
     password: "password123",
     preferredLanguage: "en",
     acceptedTerms: true,
-    acceptedPrivacy: true
+    acceptedPrivacy: true,
   });
   const registerPayload = await register.json();
-  await fetch(`${baseUrl}/verify-email?token=${registerPayload.data.debug.emailVerificationToken}`);
+  await fetch(
+    `${baseUrl}/verify-email?token=${registerPayload.data.debug.emailVerificationToken}`,
+  );
 
-  const login = await post("/login", { identifier: email, password: "password123" });
+  const login = await post("/login", {
+    identifier: email,
+    password: "password123",
+  });
   const loginPayload = await login.json();
   const sessionId = loginPayload.data.session.id;
   const deleted = await fetch(`${baseUrl}/account`, {
     method: "DELETE",
-    headers: { "x-session-id": sessionId }
+    headers: { "x-session-id": sessionId },
   });
   const deletedPayload = await deleted.json();
   const oldSession = await fetch(`${baseUrl}/session/${sessionId}`);
@@ -329,12 +372,12 @@ async function post(path: string, body: Record<string, unknown>) {
   return fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }
 
 function uniqueEmail(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}@scanmenu.local`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}@babili.local`;
 }
 
 function uniqueUsername(prefix: string) {

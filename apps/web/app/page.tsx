@@ -47,7 +47,11 @@ export default async function PublicHomePage({
         languages={languages}
       />
       <HeroSection direction={direction} hero={content.hero} />
-      <FeaturesSection about={content.about} cards={content.featureCards} />
+      <FeaturesSection
+        about={content.about}
+        cards={content.featureCards}
+        eyebrow={content.brandName}
+      />
       <PricingSection
         actionLabel={content.hero.primaryAction}
         eyebrow={content.nav.pricing}

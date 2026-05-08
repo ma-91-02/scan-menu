@@ -1,10 +1,10 @@
-# Scan Menu Roadmap
+# Babili Roadmap
 
 ## Phase 1: Runnable MVP
 
 - Monorepo foundation.
 - Dashboard shell.
-- Mobile ordering shell.
+- Customer web/PWA ordering shell.
 - Express microservices with in-memory contracts.
 - Central language model and translation placeholder.
 

@@ -6,16 +6,17 @@ import styles from "./FeaturesSection.module.scss";
 interface FeaturesSectionProps {
   about: PublicPageContent["about"];
   cards: PublicPageContent["featureCards"];
+  eyebrow: string;
 }
 
-export function FeaturesSection({ about, cards }: FeaturesSectionProps) {
+export function FeaturesSection({
+  about,
+  cards,
+  eyebrow,
+}: FeaturesSectionProps) {
   return (
     <section className={styles.section} id="features">
-      <SectionHeading
-        eyebrow="Scan Menu"
-        title={about.title}
-        body={about.body}
-      />
+      <SectionHeading eyebrow={eyebrow} title={about.title} body={about.body} />
       <div className={styles.grid}>
         {cards.map((card) => (
           <FeatureCard

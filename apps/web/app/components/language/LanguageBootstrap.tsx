@@ -3,13 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import type { LanguageOption } from "../../lib/public-page";
+import { migrateLegacyStorageKey } from "../../lib/storage-keys";
 
 interface LanguageBootstrapProps {
   fallbackLanguage: string;
   languages: LanguageOption[];
 }
-
-const languageStorageKey = "scanmenu-language";
 
 export function LanguageBootstrap({
   fallbackLanguage,
@@ -22,6 +21,7 @@ export function LanguageBootstrap({
   );
 
   useEffect(() => {
+    const languageStorageKey = migrateLegacyStorageKey("language");
     const searchParams = new URLSearchParams(window.location.search);
     const urlLanguage = searchParams.get("lang");
 

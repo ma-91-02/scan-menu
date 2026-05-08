@@ -1,28 +1,32 @@
 {
-  "name": "scanmenu",
+  "name": "babili",
   "private": true,
   "version": "0.1.0",
-  "description": "Scan Menu multilingual restaurant ordering platform.",
+  "description": "Babili multilingual restaurant ordering platform.",
   "workspaces": [
     "apps/*",
     "services/*",
     "packages/*"
   ],
   "scripts": {
-    "predev": "npm run build -w @scanmenu/shared",
+    "predev": "npm run build -w @babili/shared",
     "dev": "npm run dev --workspaces --if-present",
-    "dev:web": "npm run dev -w @scanmenu/web -- -p 3000",
-    "dev:mobile": "npm run dev -w @scanmenu/mobile",
-    "dev:gateway": "npm run dev -w @scanmenu/api-gateway",
-    "dev:auth": "npm run dev -w @scanmenu/auth-service",
-    "dev:restaurants": "npm run dev -w @scanmenu/restaurant-service",
-    "dev:orders": "npm run dev -w @scanmenu/order-service",
-    "dev:translations": "npm run dev -w @scanmenu/translation-service",
-    "dev:docker": "docker compose up --build",
-    "dev:down": "docker compose down",
+    "dev:shared": "npm run dev -w @babili/shared",
+    "dev:web": "npm run dev -w @babili/web -- -p 3000",
+    "dev:services": "node scripts/dev-services.mjs",
+    "dev:gateway": "npm run dev -w @babili/api-gateway",
+    "dev:auth": "npm run dev -w @babili/auth-service",
+    "dev:restaurants": "npm run dev -w @babili/restaurant-service",
+    "dev:orders": "npm run dev -w @babili/order-service",
+    "dev:translations": "npm run dev -w @babili/translation-service",
+    "dev:docker": "docker compose -f docker-compose.dev.yml up --build",
+    "dev:docker:down": "docker compose -f docker-compose.dev.yml down",
+    "dev:down": "npm run dev:docker:down",
+    "prod:docker": "docker compose up --build",
+    "prod:down": "docker compose down",
     "health": "node scripts/health-check.mjs",
-    "pretypecheck": "npm run build -w @scanmenu/shared",
-    "pretest": "npm run build -w @scanmenu/shared",
+    "pretypecheck": "npm run build -w @babili/shared",
+    "pretest": "npm run build -w @babili/shared",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
@@ -37,9 +41,5 @@
   "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
-  },
-  "dependencies": {
-    "@expo/metro-runtime": "~5.0.5",
-    "react-native-web": "^0.20.0"
   }
 }

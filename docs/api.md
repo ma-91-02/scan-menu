@@ -1,4 +1,4 @@
-# Scan Menu MVP API
+# Babili MVP API
 
 All client traffic should go through the API gateway at `http://localhost:4000`.
 

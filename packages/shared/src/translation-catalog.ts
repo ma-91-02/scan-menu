@@ -1,4 +1,4 @@
-export type ScanMenuLanguageCode =
+export type BabiliLanguageCode =
   | "ar"
   | "en"
   | "ru"
@@ -25,13 +25,13 @@ export type ScanMenuLanguageCode =
   | "vi"
   | "th";
 
-export type ScanMenuDirection = "ltr" | "rtl";
-export type CompleteTranslations = Record<ScanMenuLanguageCode, string>;
+export type BabiliDirection = "ltr" | "rtl";
+export type CompleteTranslations = Record<BabiliLanguageCode, string>;
 
-export interface ScanMenuLanguage {
-  code: ScanMenuLanguageCode;
+export interface BabiliLanguage {
+  code: BabiliLanguageCode;
   nativeName: string;
-  direction: ScanMenuDirection;
+  direction: BabiliDirection;
 }
 
 export interface TranslationCatalogItem {
@@ -88,7 +88,7 @@ export type IngredientCategory =
   | "modifiers"
   | "allergens";
 
-export const scanMenuLanguages: ScanMenuLanguage[] = [
+export const babiliLanguages: BabiliLanguage[] = [
   { code: "ar", nativeName: "العربية", direction: "rtl" },
   { code: "en", nativeName: "English", direction: "ltr" },
   { code: "ru", nativeName: "Русский", direction: "ltr" },
@@ -1084,7 +1084,7 @@ function tx(
   partial: Partial<CompleteTranslations> = {},
 ): CompleteTranslations {
   return Object.fromEntries(
-    scanMenuLanguages.map((language) => [
+    babiliLanguages.map((language) => [
       language.code,
       partial[language.code] ?? phraseTranslations[en]?.[language.code] ?? en,
     ]),
@@ -1389,6 +1389,89 @@ export const menuSectionTaxonomy: MenuSectionTaxonomyItem[] = [
 ];
 
 export const uiTranslations: TranslationCatalogItem[] = [
+  {
+    key: "brand.name",
+    translations: tx("Babili", {
+      ar: "بابلي",
+      ru: "Бабили",
+    }),
+  },
+  {
+    key: "brand.nameArabic",
+    translations: tx("بابلي"),
+  },
+  {
+    key: "brand.tagline",
+    translations: tx(
+      "Customers order in their language. Restaurants receive orders in theirs.",
+      {
+        ar: "الزبائن يطلبون بلغتهم، والمطاعم تستقبل الطلب بلغتها.",
+        ru: "Клиенты заказывают на своем языке, рестораны получают заказ на своем.",
+        tr: "Müşteriler kendi dillerinde sipariş verir, restoranlar siparişi kendi dillerinde alır.",
+        fr: "Les clients commandent dans leur langue, les restaurants reçoivent les commandes dans la leur.",
+        es: "Los clientes piden en su idioma y los restaurantes reciben los pedidos en el suyo.",
+        de: "Kunden bestellen in ihrer Sprache, Restaurants erhalten Bestellungen in ihrer.",
+      },
+    ),
+  },
+  {
+    key: "brand.description",
+    translations: tx(
+      "Babili is a multilingual restaurant ordering platform with centralized translation.",
+      {
+        ar: "بابلي منصة طلبات مطاعم متعددة اللغات بترجمة مركزية.",
+        ru: "Бабили — многоязычная платформа заказов для ресторанов с централизованным переводом.",
+        tr: "Babili, merkezi çeviriye sahip çok dilli bir restoran sipariş platformudur.",
+        fr: "Babili est une plateforme de commande de restaurant multilingue avec traduction centralisée.",
+        es: "Babili es una plataforma multilingüe de pedidos para restaurantes con traducción centralizada.",
+        de: "Babili ist eine mehrsprachige Bestellplattform für Restaurants mit zentraler Übersetzung.",
+      },
+    ),
+  },
+  {
+    key: "platformAdmin.title",
+    translations: tx("Babili platform dashboard", {
+      ar: "لوحة تحكم منصة بابلي",
+      ru: "Панель платформы Бабили",
+      tr: "Babili platform paneli",
+      fr: "Tableau de bord Babili",
+      es: "Panel de plataforma Babili",
+      de: "Babili Plattform-Dashboard",
+    }),
+  },
+  {
+    key: "restaurantDashboard.title",
+    translations: tx("Babili restaurant dashboard", {
+      ar: "لوحة مطعم بابلي",
+      ru: "Панель ресторана Бабили",
+      tr: "Babili restoran paneli",
+      fr: "Tableau de bord restaurant Babili",
+      es: "Panel de restaurante Babili",
+      de: "Babili Restaurant-Dashboard",
+    }),
+  },
+  {
+    key: "staffPortal.title",
+    translations: tx("Babili staff portal", {
+      ar: "بوابة موظفي بابلي",
+      ru: "Портал персонала Бабили",
+      tr: "Babili personel portalı",
+      fr: "Portail du personnel Babili",
+      es: "Portal de personal Babili",
+      de: "Babili Mitarbeiterportal",
+    }),
+  },
+  {
+    key: "customerPortal.title",
+    translations: tx("Babili customer portal", {
+      ar: "بوابة زبائن بابلي",
+      ru: "Клиентский портал Бабили",
+      tr: "Babili müşteri portalı",
+      fr: "Portail client Babili",
+      es: "Portal de clientes Babili",
+      de: "Babili Kundenportal",
+    }),
+  },
   {
     key: "restaurant.menu",
     translations: tx("Menu", {
@@ -1871,13 +1954,13 @@ export const uiTranslations: TranslationCatalogItem[] = [
   },
   {
     key: "restaurant.brand_os",
-    translations: tx("Scan Menu OS", {
-      ar: "Scan Menu OS",
-      ru: "Scan Menu OS",
-      tr: "Scan Menu OS",
-      fr: "Scan Menu OS",
-      es: "Scan Menu OS",
-      de: "Scan Menu OS",
+    translations: tx("Babili OS", {
+      ar: "بابلي OS",
+      ru: "Бабили OS",
+      tr: "Babili OS",
+      fr: "Babili OS",
+      es: "Babili OS",
+      de: "Babili OS",
     }),
   },
   {
@@ -3352,7 +3435,7 @@ export function pickCatalogTranslation(
   translations: CompleteTranslations,
   language: string,
 ) {
-  return translations[language as ScanMenuLanguageCode] ?? translations.en;
+  return translations[language as BabiliLanguageCode] ?? translations.en;
 }
 
 export function getUiTranslationMap(language: string): LocalizedTranslationMap {

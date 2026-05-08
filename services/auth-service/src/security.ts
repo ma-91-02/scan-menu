@@ -52,10 +52,16 @@ function createSecureToken() {
   return crypto.randomBytes(tokenBytes).toString("base64url");
 }
 
-async function verifyLegacyScryptPassword(password: string, storedHash: string) {
+async function verifyLegacyScryptPassword(
+  password: string,
+  storedHash: string,
+) {
   const [scheme, salt, expected] = storedHash.split(":");
   if (scheme !== "scrypt" || !salt || !expected) return false;
   const actual = (await scryptAsync(password, salt, 64)) as Buffer;
   const expectedBuffer = Buffer.from(expected, "base64url");
-  return expectedBuffer.length === actual.length && crypto.timingSafeEqual(actual, expectedBuffer);
+  return (
+    expectedBuffer.length === actual.length &&
+    crypto.timingSafeEqual(actual, expectedBuffer)
+  );
 }

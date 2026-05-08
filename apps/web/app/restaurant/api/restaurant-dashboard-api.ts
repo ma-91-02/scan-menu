@@ -1,4 +1,4 @@
-import { supportedLanguages } from "@scanmenu/shared";
+import { supportedLanguages } from "@babili/shared";
 import type {
   CatalogEntry,
   MenuEntry,

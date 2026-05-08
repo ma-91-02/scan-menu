@@ -1,6 +1,6 @@
 import cors from "cors";
 import express from "express";
-import type { StaffRole, UserRole } from "@scanmenu/shared";
+import type { StaffRole, UserRole } from "@babili/shared";
 import {
   createRestaurantDb,
   createRestaurantStaffDb,
@@ -24,9 +24,13 @@ import {
   type AuthSessionRecord,
   type AuthUserRecord,
   type RestaurantAuthRecord,
-  type RestaurantStaffRecord
+  type RestaurantStaffRecord,
 } from "./db.js";
-import { getEmailConfigStatus, trySendPasswordResetEmail, trySendVerificationEmail } from "./email.js";
+import {
+  getEmailConfigStatus,
+  trySendPasswordResetEmail,
+  trySendVerificationEmail,
+} from "./email.js";
 import {
   createEmailVerificationToken,
   createId,
@@ -35,27 +39,42 @@ import {
   hashEmailToken,
   hashPassword,
   hashToken,
-  verifyPassword
+  verifyPassword,
 } from "./security.js";
 
 const port = Number(process.env.AUTH_SERVICE_PORT ?? 4101);
-const defaultDemoPassword = process.env.SCANMENU_DEMO_PASSWORD ?? "password";
+const defaultDemoPassword = process.env.BABILI_DEMO_PASSWORD ?? "password";
 const termsVersion = "1.0";
 const privacyVersion = "1.0";
 const verificationTtlMs = 1000 * 60 * 60 * 24;
 const passwordResetTtlMs = 1000 * 60 * 30;
 const sessionTtlMs = 1000 * 60 * 60 * 8;
-const restaurantRoles = ["owner", "manager", "cashier", "kitchen", "waiter", "viewer"] as const;
-const restaurantServiceUrl = process.env.RESTAURANT_SERVICE_URL ?? "http://localhost:4102";
-const orderServiceUrl = process.env.ORDER_SERVICE_URL ?? "http://localhost:4103";
+const restaurantRoles = [
+  "owner",
+  "manager",
+  "cashier",
+  "kitchen",
+  "waiter",
+  "viewer",
+] as const;
+const restaurantServiceUrl =
+  process.env.RESTAURANT_SERVICE_URL ?? "http://localhost:4102";
+const orderServiceUrl =
+  process.env.ORDER_SERVICE_URL ?? "http://localhost:4103";
 
 const rolePermissions: Record<StaffRole, string[]> = {
   owner: ["*"],
-  manager: ["menu:write", "orders:read", "orders:update", "staff:write", "profile:write"],
+  manager: [
+    "menu:write",
+    "orders:read",
+    "orders:update",
+    "staff:write",
+    "profile:write",
+  ],
   cashier: ["orders:read", "orders:update", "payments:write", "cashier:read"],
   kitchen: ["orders:read", "orders:update", "kitchen:read"],
   waiter: ["orders:read", "waiter:read", "waiter:update"],
-  viewer: ["orders:read"]
+  viewer: ["orders:read"],
 };
 
 const users: AuthUserRecord[] = [];
@@ -84,8 +103,8 @@ export function createApp() {
         database: hasAuthDb() ? "postgres" : "memory",
         email: getEmailConfigStatus(),
         publicWebUrl: process.env.PUBLIC_WEB_URL ?? "http://localhost:3000",
-        publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:4000"
-      }
+        publicApiUrl: process.env.PUBLIC_API_URL ?? "http://localhost:4000",
+      },
     });
   });
 
@@ -115,12 +134,21 @@ export function createApp() {
 
     const existingUser = await findUserByIdentifier(input.email);
     if (existingUser && !existingUser.emailVerified) {
-      await resendVerificationForExistingUser(existingUser, res, 202, input.password);
+      await resendVerificationForExistingUser(
+        existingUser,
+        res,
+        202,
+        input.password,
+      );
       return;
     }
 
-    if (await isIdentityTaken({ email: input.email, username: input.username })) {
-      res.status(409).json({ error: "Email or username is already registered" });
+    if (
+      await isIdentityTaken({ email: input.email, username: input.username })
+    ) {
+      res
+        .status(409)
+        .json({ error: "Email or username is already registered" });
       return;
     }
 
@@ -136,11 +164,16 @@ export function createApp() {
       acceptedTerms: input.acceptedTerms,
       acceptedPrivacy: input.acceptedPrivacy,
       verificationToken,
-      verificationExpiresAt: input.debugVerificationExpiresAt
+      verificationExpiresAt: input.debugVerificationExpiresAt,
     });
 
     await saveUser(user);
-    const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+    const emailDelivery = await trySendVerificationEmail({
+      to: user.email,
+      language: user.preferredLanguage,
+      name: user.name,
+      token: verificationToken,
+    });
 
     res.status(201).json({
       data: {
@@ -148,8 +181,8 @@ export function createApp() {
         requiresEmailVerification: true,
         emailDelivery,
         message: "Please verify your email before signing in.",
-        ...debugTokens({ emailVerificationToken: verificationToken })
-      }
+        ...debugTokens({ emailVerificationToken: verificationToken }),
+      },
     });
   });
 
@@ -162,19 +195,35 @@ export function createApp() {
       return;
     }
 
-    if (!input.name || !input.email || !input.password || !input.restaurantName) {
-      res.status(400).json({ error: "Name, email, password, and restaurant name are required" });
+    if (
+      !input.name ||
+      !input.email ||
+      !input.password ||
+      !input.restaurantName
+    ) {
+      res.status(400).json({
+        error: "Name, email, password, and restaurant name are required",
+      });
       return;
     }
 
     const existingUser = await findUserByIdentifier(input.email);
     if (existingUser && !existingUser.emailVerified) {
-      await resendVerificationForExistingUser(existingUser, res, 202, input.password);
+      await resendVerificationForExistingUser(
+        existingUser,
+        res,
+        202,
+        input.password,
+      );
       return;
     }
 
-    if (await isIdentityTaken({ email: input.email, username: input.username })) {
-      res.status(409).json({ error: "Email or username is already registered" });
+    if (
+      await isIdentityTaken({ email: input.email, username: input.username })
+    ) {
+      res
+        .status(409)
+        .json({ error: "Email or username is already registered" });
       return;
     }
 
@@ -195,7 +244,7 @@ export function createApp() {
       acceptedTerms: input.acceptedTerms,
       acceptedPrivacy: input.acceptedPrivacy,
       verificationToken,
-      verificationExpiresAt: input.debugVerificationExpiresAt
+      verificationExpiresAt: input.debugVerificationExpiresAt,
     });
     const restaurant: RestaurantAuthRecord = {
       id: restaurantId,
@@ -208,7 +257,7 @@ export function createApp() {
       address: input.address,
       phone: input.phone,
       email: input.email,
-      planId: "basic"
+      planId: "basic",
     };
     const staff = buildStaffLink(restaurantId, user.id, "owner");
 
@@ -216,7 +265,12 @@ export function createApp() {
     await saveRestaurant(restaurant);
     await saveStaff(staff);
     await syncRestaurantProfile(restaurant, user);
-    const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+    const emailDelivery = await trySendVerificationEmail({
+      to: user.email,
+      language: user.preferredLanguage,
+      name: user.name,
+      token: verificationToken,
+    });
 
     res.status(201).json({
       data: {
@@ -226,8 +280,8 @@ export function createApp() {
         requiresEmailVerification: true,
         emailDelivery,
         message: "Please verify your email before signing in.",
-        ...debugTokens({ emailVerificationToken: verificationToken })
-      }
+        ...debugTokens({ emailVerificationToken: verificationToken }),
+      },
     });
   });
 
@@ -237,7 +291,7 @@ export function createApp() {
       ...req.body,
       name: `${String(req.body.firstName ?? "").trim()} ${String(req.body.lastName ?? "").trim()}`.trim(),
       acceptedTerms: req.body.acceptedTerms ?? req.body.termsAccepted,
-      acceptedPrivacy: req.body.acceptedPrivacy ?? req.body.privacyAccepted
+      acceptedPrivacy: req.body.acceptedPrivacy ?? req.body.privacyAccepted,
     });
     await registerRestaurantOwner(input, res);
   });
@@ -248,7 +302,8 @@ export function createApp() {
     if (!actor) return;
 
     const restaurantId = req.params.restaurantId;
-    if (!requireStaffRole(actor, restaurantId, ["owner", "manager"], res)) return;
+    if (!requireStaffRole(actor, restaurantId, ["owner", "manager"], res))
+      return;
 
     const input = normalizeStaffRegistration(req.body, restaurantId);
     if (!input.name || !input.email) {
@@ -256,8 +311,12 @@ export function createApp() {
       return;
     }
 
-    if (await isIdentityTaken({ email: input.email, username: input.username })) {
-      res.status(409).json({ error: "Email or username is already registered" });
+    if (
+      await isIdentityTaken({ email: input.email, username: input.username })
+    ) {
+      res
+        .status(409)
+        .json({ error: "Email or username is already registered" });
       return;
     }
 
@@ -277,13 +336,18 @@ export function createApp() {
       permissions: rolePermissions[input.staffRole],
       acceptedTerms: true,
       acceptedPrivacy: true,
-      verificationToken
+      verificationToken,
     });
     const staff = buildStaffLink(restaurantId, user.id, input.staffRole);
 
     await saveUser(user);
     await saveStaff(staff);
-    const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+    const emailDelivery = await trySendVerificationEmail({
+      to: user.email,
+      language: user.preferredLanguage,
+      name: user.name,
+      token: verificationToken,
+    });
 
     res.status(201).json({
       data: {
@@ -291,8 +355,8 @@ export function createApp() {
         staff,
         temporaryPasswordIssued: !input.password,
         emailDelivery,
-        ...debugTokens({ emailVerificationToken: verificationToken })
-      }
+        ...debugTokens({ emailVerificationToken: verificationToken }),
+      },
     });
   });
 
@@ -302,8 +366,14 @@ export function createApp() {
     if (!actor) return;
 
     const restaurantId = String(req.body.restaurantId ?? "");
-    if (!requireStaffRole(actor, restaurantId, ["owner", "manager"], res)) return;
-    await registerStaff(normalizeStaffRegistration(req.body, restaurantId), actor, restaurantId, res);
+    if (!requireStaffRole(actor, restaurantId, ["owner", "manager"], res))
+      return;
+    await registerStaff(
+      normalizeStaffRegistration(req.body, restaurantId),
+      actor,
+      restaurantId,
+      res,
+    );
   });
 
   app.get("/restaurants/:restaurantId/staff", async (req, res) => {
@@ -311,27 +381,42 @@ export function createApp() {
     const actor = await requireAuth(req, res);
     if (!actor) return;
     if (!requireRestaurantAccess(actor, req.params.restaurantId, res)) return;
-    if (!requirePermission(actor, "staff:write", res) && actor.staffRole !== "owner") return;
+    if (
+      !requirePermission(actor, "staff:write", res) &&
+      actor.staffRole !== "owner"
+    )
+      return;
 
     const staffUsers = hasAuthDb()
       ? await getStaffForRestaurantDb(req.params.restaurantId)
-      : users.filter((user) => user.restaurantId === req.params.restaurantId && (user.role === "staff" || user.role === "restaurant_owner"));
+      : users.filter(
+          (user) =>
+            user.restaurantId === req.params.restaurantId &&
+            (user.role === "staff" || user.role === "restaurant_owner"),
+        );
     res.json({ data: staffUsers.map(toPublicUser) });
   });
 
   app.post("/login", async (req, res) => {
     await dbReady;
-    const identifier = String(req.body.identifier ?? req.body.email ?? "").trim().toLowerCase();
+    const identifier = String(req.body.identifier ?? req.body.email ?? "")
+      .trim()
+      .toLowerCase();
     const password = String(req.body.password ?? "");
 
     if (!identifier || !password) {
-      res.status(400).json({ error: "Email, username, or phone and password are required" });
+      res
+        .status(400)
+        .json({ error: "Email, username, or phone and password are required" });
       return;
     }
 
     const user = await findUserByIdentifier(identifier);
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      res.status(401).json({ code: "INVALID_LOGIN_CREDENTIALS", error: "Invalid login credentials" });
+      res.status(401).json({
+        code: "INVALID_LOGIN_CREDENTIALS",
+        error: "Invalid login credentials",
+      });
       return;
     }
 
@@ -341,8 +426,8 @@ export function createApp() {
         error: "Email verification is required before login",
         data: {
           requiresEmailVerification: true,
-          email: user.email
-        }
+          email: user.email,
+        },
       });
       return;
     }
@@ -353,8 +438,8 @@ export function createApp() {
         user: toPublicUser(user),
         session: toPublicSession(session),
         accessToken: session.id,
-        redirectTo: getRedirectForRole(user)
-      }
+        redirectTo: getRedirectForRole(user),
+      },
     });
   });
 
@@ -363,8 +448,14 @@ export function createApp() {
     const token = String(req.query.token ?? "");
     const user = token ? await findUserByVerificationToken(token) : undefined;
 
-    if (!user || !user.emailVerificationExpiresAt || new Date(user.emailVerificationExpiresAt).getTime() < Date.now()) {
-      res.status(400).json({ error: "Verification link is invalid or expired" });
+    if (
+      !user ||
+      !user.emailVerificationExpiresAt ||
+      new Date(user.emailVerificationExpiresAt).getTime() < Date.now()
+    ) {
+      res
+        .status(400)
+        .json({ error: "Verification link is invalid or expired" });
       return;
     }
 
@@ -373,11 +464,13 @@ export function createApp() {
       emailVerified: true,
       emailVerifiedAt: new Date().toISOString(),
       emailVerificationTokenHash: undefined,
-      emailVerificationExpiresAt: undefined
+      emailVerificationExpiresAt: undefined,
     };
     await updateUser(nextUser);
 
-    res.json({ data: { ok: true, message: "Email verified. You can sign in now." } });
+    res.json({
+      data: { ok: true, message: "Email verified. You can sign in now." },
+    });
   });
 
   app.post("/resend-verification", async (req, res) => {
@@ -403,10 +496,21 @@ export function createApp() {
       await updateUser({
         ...user,
         passwordResetTokenHash: hashToken(resetToken),
-        passwordResetExpiresAt: expiresIn(passwordResetTtlMs)
+        passwordResetExpiresAt: expiresIn(passwordResetTtlMs),
       });
-      const emailDelivery = await trySendPasswordResetEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: resetToken });
-      res.json({ data: { ok: true, emailDelivery, ...debugTokens({ passwordResetToken: resetToken }) } });
+      const emailDelivery = await trySendPasswordResetEmail({
+        to: user.email,
+        language: user.preferredLanguage,
+        name: user.name,
+        token: resetToken,
+      });
+      res.json({
+        data: {
+          ok: true,
+          emailDelivery,
+          ...debugTokens({ passwordResetToken: resetToken }),
+        },
+      });
       return;
     }
 
@@ -420,12 +524,20 @@ export function createApp() {
     const user = token ? await findUserByPasswordResetToken(token) : undefined;
 
     if (!newPassword || newPassword.length < 8) {
-      res.status(400).json({ error: "New password must be at least 8 characters" });
+      res
+        .status(400)
+        .json({ error: "New password must be at least 8 characters" });
       return;
     }
 
-    if (!user || !user.passwordResetExpiresAt || new Date(user.passwordResetExpiresAt).getTime() < Date.now()) {
-      res.status(400).json({ error: "Password reset link is invalid or expired" });
+    if (
+      !user ||
+      !user.passwordResetExpiresAt ||
+      new Date(user.passwordResetExpiresAt).getTime() < Date.now()
+    ) {
+      res
+        .status(400)
+        .json({ error: "Password reset link is invalid or expired" });
       return;
     }
 
@@ -433,16 +545,20 @@ export function createApp() {
       ...user,
       passwordHash: await hashPassword(newPassword),
       passwordResetTokenHash: undefined,
-      passwordResetExpiresAt: undefined
+      passwordResetExpiresAt: undefined,
     });
     await deleteSessionsForUser(user.id);
 
-    res.json({ data: { ok: true, message: "Password updated. Please sign in again." } });
+    res.json({
+      data: { ok: true, message: "Password updated. Please sign in again." },
+    });
   });
 
   app.get("/session/:sessionId", async (req, res) => {
     await dbReady;
-    const session = hasAuthDb() ? await getSessionDb(req.params.sessionId) : sessions.get(hashToken(req.params.sessionId));
+    const session = hasAuthDb()
+      ? await getSessionDb(req.params.sessionId)
+      : sessions.get(hashToken(req.params.sessionId));
 
     if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
       if (session) await deleteSession(req.params.sessionId);
@@ -461,8 +577,8 @@ export function createApp() {
       data: {
         session: toPublicSession(session),
         user: toPublicUser(user),
-        redirectTo: getRedirectForRole(user)
-      }
+        redirectTo: getRedirectForRole(user),
+      },
     });
   });
 
@@ -485,7 +601,10 @@ export function createApp() {
   return app;
 }
 
-async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaurantOwnerRegistration>, res: express.Response) {
+async function registerRestaurantOwner(
+  input: ReturnType<typeof normalizeRestaurantOwnerRegistration>,
+  res: express.Response,
+) {
   const consentError = validateConsent(input);
   if (consentError) {
     res.status(400).json({ error: consentError });
@@ -493,13 +612,20 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
   }
 
   if (!input.name || !input.email || !input.password || !input.restaurantName) {
-    res.status(400).json({ error: "Name, email, password, and restaurant name are required" });
+    res.status(400).json({
+      error: "Name, email, password, and restaurant name are required",
+    });
     return;
   }
 
   const existingUser = await findUserByIdentifier(input.email);
   if (existingUser && !existingUser.emailVerified) {
-    await resendVerificationForExistingUser(existingUser, res, 202, input.password);
+    await resendVerificationForExistingUser(
+      existingUser,
+      res,
+      202,
+      input.password,
+    );
     return;
   }
 
@@ -525,7 +651,7 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
     acceptedTerms: input.acceptedTerms,
     acceptedPrivacy: input.acceptedPrivacy,
     verificationToken,
-    verificationExpiresAt: input.debugVerificationExpiresAt
+    verificationExpiresAt: input.debugVerificationExpiresAt,
   });
   const restaurant: RestaurantAuthRecord = {
     id: restaurantId,
@@ -538,7 +664,7 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
     address: input.address,
     phone: input.phone,
     email: input.email,
-    planId: "basic"
+    planId: "basic",
   };
   const staff = buildStaffLink(restaurantId, user.id, "owner");
 
@@ -546,7 +672,12 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
   await saveRestaurant(restaurant);
   await saveStaff(staff);
   await syncRestaurantProfile(restaurant, user);
-  const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+  const emailDelivery = await trySendVerificationEmail({
+    to: user.email,
+    language: user.preferredLanguage,
+    name: user.name,
+    token: verificationToken,
+  });
 
   res.status(201).json({
     data: {
@@ -556,24 +687,31 @@ async function registerRestaurantOwner(input: ReturnType<typeof normalizeRestaur
       requiresEmailVerification: true,
       emailDelivery,
       message: "Please verify your email before signing in.",
-      ...debugTokens({ emailVerificationToken: verificationToken })
-    }
+      ...debugTokens({ emailVerificationToken: verificationToken }),
+    },
   });
 }
 
-async function resendVerificationForExistingUser(user: AuthUserRecord, res: express.Response, statusCode: 200 | 202, nextPassword?: string) {
+async function resendVerificationForExistingUser(
+  user: AuthUserRecord,
+  res: express.Response,
+  statusCode: 200 | 202,
+  nextPassword?: string,
+) {
   const verificationToken = createEmailVerificationToken();
   const nextUser = await updateUser({
     ...user,
-    passwordHash: nextPassword ? await hashPassword(nextPassword) : user.passwordHash,
+    passwordHash: nextPassword
+      ? await hashPassword(nextPassword)
+      : user.passwordHash,
     emailVerificationTokenHash: hashEmailToken(verificationToken),
-    emailVerificationExpiresAt: expiresIn(verificationTtlMs)
+    emailVerificationExpiresAt: expiresIn(verificationTtlMs),
   });
   const emailDelivery = await trySendVerificationEmail({
     to: nextUser.email,
     language: nextUser.preferredLanguage,
     name: nextUser.name,
-    token: verificationToken
+    token: verificationToken,
   });
 
   res.status(statusCode).json({
@@ -582,13 +720,19 @@ async function resendVerificationForExistingUser(user: AuthUserRecord, res: expr
       resent: true,
       requiresEmailVerification: true,
       emailDelivery,
-      message: "A verification link was sent if this email is registered and unverified.",
-      ...debugTokens({ emailVerificationToken: verificationToken })
-    }
+      message:
+        "A verification link was sent if this email is registered and unverified.",
+      ...debugTokens({ emailVerificationToken: verificationToken }),
+    },
   });
 }
 
-async function registerStaff(input: ReturnType<typeof normalizeStaffRegistration>, actor: AuthUserRecord, restaurantId: string, res: express.Response) {
+async function registerStaff(
+  input: ReturnType<typeof normalizeStaffRegistration>,
+  actor: AuthUserRecord,
+  restaurantId: string,
+  res: express.Response,
+) {
   if (!input.name || !input.email) {
     res.status(400).json({ error: "Name and email are required" });
     return;
@@ -615,13 +759,18 @@ async function registerStaff(input: ReturnType<typeof normalizeStaffRegistration
     permissions: rolePermissions[input.staffRole],
     acceptedTerms: true,
     acceptedPrivacy: true,
-    verificationToken
+    verificationToken,
   });
   const staff = buildStaffLink(restaurantId, user.id, input.staffRole);
 
   await saveUser(user);
   await saveStaff(staff);
-  const emailDelivery = await trySendVerificationEmail({ to: user.email, language: user.preferredLanguage, name: user.name, token: verificationToken });
+  const emailDelivery = await trySendVerificationEmail({
+    to: user.email,
+    language: user.preferredLanguage,
+    name: user.name,
+    token: verificationToken,
+  });
 
   res.status(201).json({
     data: {
@@ -629,19 +778,25 @@ async function registerStaff(input: ReturnType<typeof normalizeStaffRegistration
       staff,
       temporaryPasswordIssued: !input.password,
       emailDelivery,
-      ...debugTokens({ emailVerificationToken: verificationToken })
-    }
+      ...debugTokens({ emailVerificationToken: verificationToken }),
+    },
   });
 }
 
 async function requireAuth(req: express.Request, res: express.Response) {
-  const token = String(req.header("x-session-id") ?? req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? "");
+  const token = String(
+    req.header("x-session-id") ??
+      req.header("authorization")?.replace(/^Bearer\s+/i, "") ??
+      "",
+  );
   if (!token) {
     res.status(401).json({ error: "Authentication is required" });
     return undefined;
   }
 
-  const session = hasAuthDb() ? await getSessionDb(token) : sessions.get(hashToken(token));
+  const session = hasAuthDb()
+    ? await getSessionDb(token)
+    : sessions.get(hashToken(token));
   if (!session || new Date(session.expiresAt).getTime() < Date.now()) {
     res.status(401).json({ error: "Session expired or not found" });
     return undefined;
@@ -656,14 +811,23 @@ async function requireAuth(req: express.Request, res: express.Response) {
   return user;
 }
 
-function requireRestaurantAccess(user: AuthUserRecord, restaurantId: string, res: express.Response) {
+function requireRestaurantAccess(
+  user: AuthUserRecord,
+  restaurantId: string,
+  res: express.Response,
+) {
   if (user.role === "platform_owner") return true;
   if (user.restaurantId === restaurantId) return true;
   res.status(403).json({ error: "Restaurant access is denied" });
   return false;
 }
 
-function requireStaffRole(user: AuthUserRecord, restaurantId: string, roles: StaffRole[], res: express.Response) {
+function requireStaffRole(
+  user: AuthUserRecord,
+  restaurantId: string,
+  roles: StaffRole[],
+  res: express.Response,
+) {
   if (!requireRestaurantAccess(user, restaurantId, res)) return false;
   if (user.role === "restaurant_owner" && roles.includes("owner")) return true;
   if (user.staffRole && roles.includes(user.staffRole)) return true;
@@ -671,8 +835,13 @@ function requireStaffRole(user: AuthUserRecord, restaurantId: string, roles: Sta
   return false;
 }
 
-function requirePermission(user: AuthUserRecord, permission: string, res: express.Response) {
-  if (user.permissions?.includes("*") || user.permissions?.includes(permission)) return true;
+function requirePermission(
+  user: AuthUserRecord,
+  permission: string,
+  res: express.Response,
+) {
+  if (user.permissions?.includes("*") || user.permissions?.includes(permission))
+    return true;
   res.status(403).json({ error: "Required permission is missing" });
   return false;
 }
@@ -706,7 +875,8 @@ async function buildUser(input: {
     preferredLanguage: input.preferredLanguage,
     emailVerified: false,
     emailVerificationTokenHash: hashEmailToken(input.verificationToken),
-    emailVerificationExpiresAt: input.verificationExpiresAt ?? expiresIn(verificationTtlMs),
+    emailVerificationExpiresAt:
+      input.verificationExpiresAt ?? expiresIn(verificationTtlMs),
     acceptedTerms: input.acceptedTerms,
     acceptedTermsAt: now,
     termsVersion,
@@ -716,7 +886,7 @@ async function buildUser(input: {
     restaurantId: input.restaurantId,
     restaurantName: input.restaurantName,
     staffRole: input.staffRole,
-    permissions: input.permissions ?? []
+    permissions: input.permissions ?? [],
   };
 }
 
@@ -725,24 +895,31 @@ function normalizeCustomerRegistration(body: Record<string, unknown>) {
   return {
     name: String(body.name ?? "").trim(),
     email,
-    username: uniqueUsername(String(body.username ?? email.split("@")[0] ?? "customer")),
+    username: uniqueUsername(
+      String(body.username ?? email.split("@")[0] ?? "customer"),
+    ),
     phone: cleanOptional(body.phone),
     password: String(body.password ?? ""),
     preferredLanguage: normalizeLanguage(body.preferredLanguage),
     acceptedTerms: Boolean(body.acceptedTerms ?? body.termsAccepted),
     acceptedPrivacy: Boolean(body.acceptedPrivacy ?? body.privacyAccepted),
-    debugVerificationExpiresAt: debugDate(body.debugVerificationExpiresAt)
+    debugVerificationExpiresAt: debugDate(body.debugVerificationExpiresAt),
   };
 }
 
 function normalizeRestaurantOwnerRegistration(body: Record<string, unknown>) {
   const email = normalizeEmail(body.email);
-  const name = String(body.name ?? `${String(body.firstName ?? "").trim()} ${String(body.lastName ?? "").trim()}`).trim();
+  const name = String(
+    body.name ??
+      `${String(body.firstName ?? "").trim()} ${String(body.lastName ?? "").trim()}`,
+  ).trim();
   const restaurantName = String(body.restaurantName ?? "").trim();
   return {
     name,
     email,
-    username: uniqueUsername(String(body.username ?? email.split("@")[0] ?? restaurantName ?? "owner")),
+    username: uniqueUsername(
+      String(body.username ?? email.split("@")[0] ?? restaurantName ?? "owner"),
+    ),
     phone: cleanOptional(body.phone),
     password: String(body.password ?? ""),
     restaurantName,
@@ -752,27 +929,37 @@ function normalizeRestaurantOwnerRegistration(body: Record<string, unknown>) {
     debugVerificationExpiresAt: debugDate(body.debugVerificationExpiresAt),
     country: cleanOptional(body.country),
     city: cleanOptional(body.city),
-    address: cleanOptional(body.address)
+    address: cleanOptional(body.address),
   };
 }
 
-function normalizeStaffRegistration(body: Record<string, unknown>, restaurantId: string) {
+function normalizeStaffRegistration(
+  body: Record<string, unknown>,
+  restaurantId: string,
+) {
   const email = normalizeEmail(body.email);
   const requestedRole = String(body.staffRole ?? body.role ?? "viewer");
-  const staffRole = restaurantRoles.includes(requestedRole as StaffRole) ? requestedRole as StaffRole : "viewer";
+  const staffRole = restaurantRoles.includes(requestedRole as StaffRole)
+    ? (requestedRole as StaffRole)
+    : "viewer";
   return {
     name: String(body.name ?? "").trim(),
     email,
-    username: uniqueUsername(String(body.username ?? email.split("@")[0] ?? "staff")),
+    username: uniqueUsername(
+      String(body.username ?? email.split("@")[0] ?? "staff"),
+    ),
     phone: cleanOptional(body.phone),
     password: cleanOptional(body.password),
     preferredLanguage: normalizeLanguage(body.preferredLanguage),
     restaurantId,
-    staffRole
+    staffRole,
   };
 }
 
-function validateConsent(input: { acceptedTerms: boolean; acceptedPrivacy: boolean }) {
+function validateConsent(input: {
+  acceptedTerms: boolean;
+  acceptedPrivacy: boolean;
+}) {
   if (!input.acceptedTerms || !input.acceptedPrivacy) {
     return "Terms of Use and Privacy Policy consent is required";
   }
@@ -787,7 +974,7 @@ async function createSession(userId: string) {
     userId,
     tokenHash: hashToken(token),
     createdAt: now.toISOString(),
-    expiresAt: new Date(now.getTime() + sessionTtlMs).toISOString()
+    expiresAt: new Date(now.getTime() + sessionTtlMs).toISOString(),
   };
 
   if (hasAuthDb()) await createSessionDb(session);
@@ -803,32 +990,92 @@ async function prepareSeedData() {
   const now = new Date().toISOString();
   const demoRestaurantIds = ["r1", "r2", "r3", "r4", "r5"];
   const seedUsers: AuthUserRecord[] = [
-    seedUser("usr_platform_owner", "Mohamed", "scanmenu-admin", "owner@scanmenu.local", "platform_owner", "ar", passwordHash, now),
-    seedUser("usr_restaurant_owner", "Anna Petrova", "bistro-owner", "owner@bistro.local", "restaurant_owner", "ru", passwordHash, now, {
-      restaurantId: "rst_bistro_01",
-      restaurantName: "Bistro Aurora",
-      staffRole: "owner",
-      permissions: rolePermissions.owner
-    }),
-    seedUser("usr_staff_kitchen", "Ivan Kitchen", "bistro-kitchen", "kitchen@bistro.local", "staff", "ru", passwordHash, now, {
-      restaurantId: "rst_bistro_01",
-      restaurantName: "Bistro Aurora",
-      staffRole: "kitchen",
-      permissions: rolePermissions.kitchen
-    }),
-    seedUser("usr_staff_cashier", "Mira Cashier", "bistro-cashier", "cashier@bistro.local", "staff", "en", passwordHash, now, {
-      restaurantId: "rst_bistro_01",
-      restaurantName: "Bistro Aurora",
-      staffRole: "cashier",
-      permissions: rolePermissions.cashier
-    }),
-    seedUser("usr_customer", "Omar Ali", "omar-customer", "customer@scanmenu.local", "customer", "ar", passwordHash, now),
-    ...demoRestaurantIds.map((name) => seedUser(`usr_${name}_owner`, name, name, `${name}@scanmenu.local`, "restaurant_owner", "ar", restaurantDemoPasswordHash, now, {
-      restaurantId: `rst_${name}`,
-      restaurantName: name,
-      staffRole: "owner",
-      permissions: rolePermissions.owner
-    }))
+    seedUser(
+      "usr_platform_owner",
+      "Mohamed",
+      "babili-admin",
+      "owner@babili.local",
+      "platform_owner",
+      "ar",
+      passwordHash,
+      now,
+    ),
+    seedUser(
+      "usr_restaurant_owner",
+      "Anna Petrova",
+      "bistro-owner",
+      "owner@bistro.local",
+      "restaurant_owner",
+      "ru",
+      passwordHash,
+      now,
+      {
+        restaurantId: "rst_bistro_01",
+        restaurantName: "Bistro Aurora",
+        staffRole: "owner",
+        permissions: rolePermissions.owner,
+      },
+    ),
+    seedUser(
+      "usr_staff_kitchen",
+      "Ivan Kitchen",
+      "bistro-kitchen",
+      "kitchen@bistro.local",
+      "staff",
+      "ru",
+      passwordHash,
+      now,
+      {
+        restaurantId: "rst_bistro_01",
+        restaurantName: "Bistro Aurora",
+        staffRole: "kitchen",
+        permissions: rolePermissions.kitchen,
+      },
+    ),
+    seedUser(
+      "usr_staff_cashier",
+      "Mira Cashier",
+      "bistro-cashier",
+      "cashier@bistro.local",
+      "staff",
+      "en",
+      passwordHash,
+      now,
+      {
+        restaurantId: "rst_bistro_01",
+        restaurantName: "Bistro Aurora",
+        staffRole: "cashier",
+        permissions: rolePermissions.cashier,
+      },
+    ),
+    seedUser(
+      "usr_customer",
+      "Omar Ali",
+      "omar-customer",
+      "customer@babili.local",
+      "customer",
+      "ar",
+      passwordHash,
+      now,
+    ),
+    ...demoRestaurantIds.map((name) =>
+      seedUser(
+        `usr_${name}_owner`,
+        name,
+        name,
+        `${name}@babili.local`,
+        "restaurant_owner",
+        "ar",
+        restaurantDemoPasswordHash,
+        now,
+        {
+          restaurantId: `rst_${name}`,
+          restaurantName: name,
+          staffRole: "owner",
+          permissions: rolePermissions.owner,
+        },
+      ),
+    ),
   ];
   const seedRestaurants: RestaurantAuthRecord[] = [
     {
@@ -842,7 +1089,7 @@ async function prepareSeedData() {
       address: "Tverskaya 10",
       phone: "+7 900 100 20 30",
       email: "owner@bistro.local",
-      planId: "premium"
+      planId: "premium",
     },
     ...demoRestaurantIds.map((name) => ({
       id: `rst_${name}`,
@@ -854,15 +1101,17 @@ async function prepareSeedData() {
       city: "",
       address: "",
       phone: "",
-      email: `${name}@scanmenu.local`,
-      planId: "basic"
-    }))
+      email: `${name}@babili.local`,
+      planId: "basic",
+    })),
   ];
   const seedStaff = [
     buildStaffLink("rst_bistro_01", "usr_restaurant_owner", "owner"),
     buildStaffLink("rst_bistro_01", "usr_staff_kitchen", "kitchen"),
     buildStaffLink("rst_bistro_01", "usr_staff_cashier", "cashier"),
-    ...demoRestaurantIds.map((name) => buildStaffLink(`rst_${name}`, `usr_${name}_owner`, "owner"))
+    ...demoRestaurantIds.map((name) =>
+      buildStaffLink(`rst_${name}`, `usr_${name}_owner`, "owner"),
+    ),
   ];
 
   users.push(...seedUsers);
@@ -880,7 +1129,7 @@ function seedUser(
   preferredLanguage: string,
   passwordHash: string,
   now: string,
-  extra: Partial<AuthUserRecord> = {}
+  extra: Partial<AuthUserRecord> = {},
 ): AuthUserRecord {
   return {
     id,
@@ -899,17 +1148,21 @@ function seedUser(
     acceptedPrivacyAt: now,
     privacyVersion,
     permissions: [],
-    ...extra
+    ...extra,
   };
 }
 
-function buildStaffLink(restaurantId: string, userId: string, staffRole: StaffRole): RestaurantStaffRecord {
+function buildStaffLink(
+  restaurantId: string,
+  userId: string,
+  staffRole: StaffRole,
+): RestaurantStaffRecord {
   return {
     id: createId("stf"),
     restaurantId,
     userId,
     staffRole,
-    permissions: rolePermissions[staffRole]
+    permissions: rolePermissions[staffRole],
   };
 }
 
@@ -936,8 +1189,18 @@ async function saveStaff(staff: RestaurantStaffRecord) {
 }
 
 async function findUserByIdentifier(identifier: string) {
-  if (hasAuthDb()) return findUserDb({ email: identifier, phone: identifier, username: identifier });
-  return users.find((item) => item.email === identifier || item.username === identifier || item.phone === identifier);
+  if (hasAuthDb())
+    return findUserDb({
+      email: identifier,
+      phone: identifier,
+      username: identifier,
+    });
+  return users.find(
+    (item) =>
+      item.email === identifier ||
+      item.username === identifier ||
+      item.phone === identifier,
+  );
 }
 
 async function findUserById(id: string) {
@@ -947,7 +1210,9 @@ async function findUserById(id: string) {
 
 async function findUserByVerificationToken(token: string) {
   if (hasAuthDb()) return findUserByVerificationTokenDb(token);
-  return users.find((user) => user.emailVerificationTokenHash === hashToken(token));
+  return users.find(
+    (user) => user.emailVerificationTokenHash === hashToken(token),
+  );
 }
 
 async function findUserByPasswordResetToken(token: string) {
@@ -985,7 +1250,11 @@ async function deleteAccount(userId: string) {
 
   if (user?.role === "restaurant_owner" && user.restaurantId) {
     for (let index = users.length - 1; index >= 0; index -= 1) {
-      if (users[index]?.restaurantId === user.restaurantId && users[index]?.id !== user.id) users.splice(index, 1);
+      if (
+        users[index]?.restaurantId === user.restaurantId &&
+        users[index]?.id !== user.id
+      )
+        users.splice(index, 1);
     }
   }
 
@@ -993,7 +1262,12 @@ async function deleteAccount(userId: string) {
   if (userIndex >= 0) users.splice(userIndex, 1);
 
   for (let index = restaurantStaff.length - 1; index >= 0; index -= 1) {
-    if (restaurantStaff[index]?.userId === userId || (user?.restaurantId && restaurantStaff[index]?.restaurantId === user.restaurantId)) restaurantStaff.splice(index, 1);
+    if (
+      restaurantStaff[index]?.userId === userId ||
+      (user?.restaurantId &&
+        restaurantStaff[index]?.restaurantId === user.restaurantId)
+    )
+      restaurantStaff.splice(index, 1);
   }
 
   for (let index = restaurants.length - 1; index >= 0; index -= 1) {
@@ -1003,26 +1277,34 @@ async function deleteAccount(userId: string) {
   await deleteRestaurantProfile(user);
 }
 
-async function syncRestaurantProfile(restaurant: RestaurantAuthRecord, owner: AuthUserRecord) {
-  const [ownerFirstName, ...lastNameParts] = owner.name.split(/\s+/).filter(Boolean);
+async function syncRestaurantProfile(
+  restaurant: RestaurantAuthRecord,
+  owner: AuthUserRecord,
+) {
+  const [ownerFirstName, ...lastNameParts] = owner.name
+    .split(/\s+/)
+    .filter(Boolean);
   await fetch(`${restaurantServiceUrl}/${encodeURIComponent(restaurant.id)}`, {
-    method: "GET"
+    method: "GET",
   }).catch(() => undefined);
-  await fetch(`${restaurantServiceUrl}/${encodeURIComponent(restaurant.id)}/profile`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ownerFirstName: ownerFirstName ?? owner.name,
-      ownerLastName: lastNameParts.join(" "),
-      email: owner.email,
-      restaurantName: restaurant.name,
-      phone: restaurant.phone,
-      address: restaurant.address,
-      country: restaurant.country,
-      city: restaurant.city,
-      currency: "USD"
-    })
-  }).catch((error) => {
+  await fetch(
+    `${restaurantServiceUrl}/${encodeURIComponent(restaurant.id)}/profile`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ownerFirstName: ownerFirstName ?? owner.name,
+        ownerLastName: lastNameParts.join(" "),
+        email: owner.email,
+        restaurantName: restaurant.name,
+        phone: restaurant.phone,
+        address: restaurant.address,
+        country: restaurant.country,
+        city: restaurant.city,
+        currency: "USD",
+      }),
+    },
+  ).catch((error) => {
     console.warn("Could not sync restaurant profile", error);
   });
 }
@@ -1030,9 +1312,12 @@ async function syncRestaurantProfile(restaurant: RestaurantAuthRecord, owner: Au
 async function deleteRestaurantProfile(user?: AuthUserRecord) {
   if (!user?.restaurantId || user.role !== "restaurant_owner") return;
 
-  await fetch(`${restaurantServiceUrl}/${encodeURIComponent(user.restaurantId)}`, {
-    method: "DELETE"
-  }).catch((error) => {
+  await fetch(
+    `${restaurantServiceUrl}/${encodeURIComponent(user.restaurantId)}`,
+    {
+      method: "DELETE",
+    },
+  ).catch((error) => {
     console.warn("Could not delete restaurant profile", error);
   });
 }
@@ -1041,9 +1326,12 @@ async function deleteLinkedOrders(user?: AuthUserRecord) {
   if (!user) return;
 
   if (user.role === "restaurant_owner" && user.restaurantId) {
-    await fetch(`${orderServiceUrl}/restaurants/${encodeURIComponent(user.restaurantId)}`, {
-      method: "DELETE"
-    }).catch((error) => {
+    await fetch(
+      `${orderServiceUrl}/restaurants/${encodeURIComponent(user.restaurantId)}`,
+      {
+        method: "DELETE",
+      },
+    ).catch((error) => {
       console.warn("Could not delete restaurant orders", error);
     });
     return;
@@ -1051,20 +1339,34 @@ async function deleteLinkedOrders(user?: AuthUserRecord) {
 
   if (user.role === "customer") {
     await fetch(`${orderServiceUrl}/customers/${encodeURIComponent(user.id)}`, {
-      method: "DELETE"
+      method: "DELETE",
     }).catch((error) => {
       console.warn("Could not delete customer orders", error);
     });
   }
 }
 
-async function isIdentityTaken(identity: { email: string; username: string; phone?: string }) {
+async function isIdentityTaken(identity: {
+  email: string;
+  username: string;
+  phone?: string;
+}) {
   if (hasAuthDb()) return Boolean(await findUserDb(identity));
-  return users.some((item) => item.email === identity.email || item.username === identity.username || (identity.phone ? item.phone === identity.phone : false));
+  return users.some(
+    (item) =>
+      item.email === identity.email ||
+      item.username === identity.username ||
+      (identity.phone ? item.phone === identity.phone : false),
+  );
 }
 
 function toPublicUser(user: AuthUserRecord) {
-  const { passwordHash, emailVerificationTokenHash, passwordResetTokenHash, ...publicUser } = user;
+  const {
+    passwordHash,
+    emailVerificationTokenHash,
+    passwordResetTokenHash,
+    ...publicUser
+  } = user;
   return publicUser;
 }
 
@@ -1073,7 +1375,7 @@ function toPublicSession(session: AuthSessionRecord) {
     id: session.id,
     userId: session.userId,
     createdAt: session.createdAt,
-    expiresAt: session.expiresAt
+    expiresAt: session.expiresAt,
   };
 }
 
@@ -1082,7 +1384,12 @@ function getRedirectForRole(user: AuthUserRecord) {
   if (user.role === "restaurant_owner") return "/restaurant";
   if (user.role === "staff") return roleRedirect(user.staffRole);
   if (user.role === "accountant") return "/staff";
-  if (["delivery_partner", "farmer_partner", "supplier_partner"].includes(user.role)) return "/partners";
+  if (
+    ["delivery_partner", "farmer_partner", "supplier_partner"].includes(
+      user.role,
+    )
+  )
+    return "/partners";
   if (user.role === "customer") return "/customer";
   return "/";
 }
@@ -1098,11 +1405,17 @@ function expiresIn(ms: number) {
 }
 
 function normalizeEmail(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function normalizeLanguage(value: unknown) {
-  return String(value ?? "en").trim().toLowerCase() || "en";
+  return (
+    String(value ?? "en")
+      .trim()
+      .toLowerCase() || "en"
+  );
 }
 
 function cleanOptional(value: unknown) {
@@ -1111,7 +1424,8 @@ function cleanOptional(value: unknown) {
 }
 
 function debugDate(value: unknown) {
-  if (!process.env.SCANMENU_SKIP_LISTEN && process.env.NODE_ENV !== "test") return undefined;
+  if (!process.env.BABILI_SKIP_LISTEN && process.env.NODE_ENV !== "test")
+    return undefined;
   const text = String(value ?? "").trim();
   if (!text) return undefined;
   const date = new Date(text);
@@ -1133,7 +1447,7 @@ function uniqueSlug(value: string) {
 }
 
 function debugTokens(tokens: Record<string, string>) {
-  if (process.env.SCANMENU_SKIP_LISTEN || process.env.NODE_ENV === "test") {
+  if (process.env.BABILI_SKIP_LISTEN || process.env.NODE_ENV === "test") {
     return { debug: tokens };
   }
   return {};
@@ -1141,7 +1455,7 @@ function debugTokens(tokens: Record<string, string>) {
 
 const app = createApp();
 
-if (!process.env.SCANMENU_SKIP_LISTEN) {
+if (!process.env.BABILI_SKIP_LISTEN) {
   app.listen(port, () => {
     console.log(`Auth service listening on http://localhost:${port}`);
   });

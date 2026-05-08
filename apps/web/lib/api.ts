@@ -5,8 +5,8 @@ import type {
   Order,
   PublicPageContent,
   SupportedLanguage,
-} from "@scanmenu/shared";
-import { getRestaurantPageCopy, supportedLanguages } from "@scanmenu/shared";
+} from "@babili/shared";
+import { getRestaurantPageCopy, supportedLanguages } from "@babili/shared";
 
 export const apiUrl =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -57,7 +57,7 @@ const fallbackMenu: Array<
 
 const fallbackPublicPage: LocalizedPublicPageContent = {
   id: "public-home",
-  brandName: "Scan Menu",
+  brandName: "Babili",
   nav: {
     home: "Home",
     pricing: "Pricing",
@@ -71,7 +71,7 @@ const fallbackPublicPage: LocalizedPublicPageContent = {
     title:
       "Let every guest order in their language, while your restaurant receives it in yours.",
     subtitle:
-      "Scan Menu connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
+      "Babili connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
     primaryAction: "Start your restaurant",
     secondaryAction: "Explore features",
     imageUrl:
@@ -80,7 +80,7 @@ const fallbackPublicPage: LocalizedPublicPageContent = {
   featureCards: [],
   pricing: [],
   about: {
-    title: "Scan Menu is an operating system for restaurants.",
+    title: "Babili is an operating system for restaurants.",
     body: "The platform owner controls public content, languages, pricing, and restaurant-facing areas from the dashboard.",
   },
   restaurantPortal: {
@@ -101,7 +101,7 @@ const fallbackPublicPage: LocalizedPublicPageContent = {
 
 const fallbackRawPublicPage: PublicPageContent = {
   id: "public-home",
-  brandName: { ar: "Scan Menu", en: "Scan Menu", ru: "Scan Menu" },
+  brandName: { ar: "بابلي", en: "Babili", ru: "Бабили" },
   nav: {
     home: { ar: "الرئيسية", en: "Home", ru: "Главная" },
     pricing: { ar: "الأسعار", en: "Pricing", ru: "Цена" },

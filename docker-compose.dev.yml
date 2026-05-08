@@ -1,0 +1,187 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: babili
+      POSTGRES_USER: babili
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-babili_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - babili_dev_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U babili -d babili"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  shared-watch:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: npm run dev -w @babili/shared
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+
+  translation-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "npm run build -w @babili/shared && npm run dev -w @babili/translation-service"
+    environment:
+      NODE_ENV: development
+      TRANSLATION_SERVICE_PORT: 4104
+    ports:
+      - "4104:4104"
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+    depends_on:
+      shared-watch:
+        condition: service_started
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "npm run build -w @babili/shared && npm run dev -w @babili/auth-service"
+    environment:
+      NODE_ENV: development
+      AUTH_SERVICE_PORT: 4101
+      DATABASE_URL: postgresql://babili:${POSTGRES_PASSWORD:-babili_dev_password}@postgres:5432/babili
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-dev-auth-token-secret-change-me}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-me}
+      REDIS_URL: redis://redis:6379
+      RESTAURANT_SERVICE_URL: http://restaurant-service:4102
+      ORDER_SERVICE_URL: http://order-service:4103
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-Babili <noreply@your-ma.com>}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "4101:4101"
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      restaurant-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+
+  restaurant-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "npm run build -w @babili/shared && npm run dev -w @babili/restaurant-service"
+    environment:
+      NODE_ENV: development
+      RESTAURANT_SERVICE_PORT: 4102
+      DATABASE_URL: postgresql://babili:${POSTGRES_PASSWORD:-babili_dev_password}@postgres:5432/babili
+      TRANSLATION_SERVICE_URL: http://translation-service:4104
+    ports:
+      - "4102:4102"
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      translation-service:
+        condition: service_started
+
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "npm run build -w @babili/shared && npm run dev -w @babili/order-service"
+    environment:
+      NODE_ENV: development
+      ORDER_SERVICE_PORT: 4103
+      DATABASE_URL: postgresql://babili:${POSTGRES_PASSWORD:-babili_dev_password}@postgres:5432/babili
+      TRANSLATION_SERVICE_URL: http://translation-service:4104
+      RESTAURANT_SERVICE_URL: http://restaurant-service:4102
+    ports:
+      - "4103:4103"
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      translation-service:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "npm run build -w @babili/shared && npm run dev -w @babili/api-gateway"
+    environment:
+      NODE_ENV: development
+      API_GATEWAY_PORT: 4000
+      AUTH_SERVICE_URL: http://auth-service:4101
+      RESTAURANT_SERVICE_URL: http://restaurant-service:4102
+      ORDER_SERVICE_URL: http://order-service:4103
+      TRANSLATION_SERVICE_URL: http://translation-service:4104
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+    depends_on:
+      auth-service:
+        condition: service_started
+      restaurant-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      translation-service:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "npm run build -w @babili/shared && npm run dev -w @babili/web -- -H 0.0.0.0 -p 3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      WEB_PUBLIC_API_URL: http://api-gateway:4000
+      WATCHPACK_POLLING: ${WATCHPACK_POLLING:-true}
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - babili_dev_node_modules:/app/node_modules
+      - babili_dev_next_cache:/app/apps/web/.next
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+volumes:
+  babili_dev_node_modules:
+  babili_dev_next_cache:
+  babili_dev_postgres:

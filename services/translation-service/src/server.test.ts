@@ -23,7 +23,9 @@ test("loads supported languages from translation-service", async () => {
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.ok(payload.data.some((language: { code: string }) => language.code === "ar"));
+  assert.ok(
+    payload.data.some((language: { code: string }) => language.code === "ar"),
+  );
 });
 
 test("localizes public page with Arabic RTL direction", async () => {
@@ -43,8 +45,8 @@ test("translates known order notes", async () => {
     body: JSON.stringify({
       text: "no onions",
       sourceLanguage: "en",
-      targetLanguage: "ru"
-    })
+      targetLanguage: "ru",
+    }),
   });
   const payload = await response.json();
 
@@ -60,8 +62,8 @@ test("translates menu ingredient names centrally", async () => {
     body: JSON.stringify({
       text: "onion",
       sourceLanguage: "en",
-      targetLanguage: "ar"
-    })
+      targetLanguage: "ar",
+    }),
   });
   const payload = await response.json();
 
@@ -74,6 +76,16 @@ test("loads centralized menu sections by language", async () => {
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.ok(payload.data.some((section: { id: string; displayName: string }) => section.id === "hot_drinks" && section.displayName === "مشروبات ساخنة"));
-  assert.ok(payload.data.some((section: { id: string; displayName: string }) => section.id === "grills" && section.displayName === "مشويات"));
+  assert.ok(
+    payload.data.some(
+      (section: { id: string; displayName: string }) =>
+        section.id === "hot_drinks" && section.displayName === "مشروبات ساخنة",
+    ),
+  );
+  assert.ok(
+    payload.data.some(
+      (section: { id: string; displayName: string }) =>
+        section.id === "grills" && section.displayName === "مشويات",
+    ),
+  );
 });

@@ -32,7 +32,7 @@ export default function PartnersPage() {
             <h2>Partner operations</h2>
             <p>
               This workspace is for delivery drivers, farmers, grocery owners,
-              and suppliers who support restaurants through Scan Menu.
+              and suppliers who support restaurants through Babili.
             </p>
           </article>
 

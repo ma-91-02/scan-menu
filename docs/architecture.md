@@ -1,13 +1,12 @@
-# Scan Menu Architecture
+# Babili Architecture
 
 ## System Shape
 
-Scan Menu uses a TypeScript monorepo with independent apps and services. Each service owns a bounded business capability and exposes HTTP APIs for the MVP. Event-driven messaging can be introduced later for order state changes, translation jobs, notifications, and analytics.
+Babili uses a TypeScript monorepo with independent apps and services. Each service owns a bounded business capability and exposes HTTP APIs for the MVP. Event-driven messaging can be introduced later for order state changes, translation jobs, notifications, and analytics.
 
 ```mermaid
 flowchart LR
-  Mobile[Expo Mobile App] --> Gateway[API Gateway]
-  Web[Next.js Dashboard] --> Gateway
+  Web[Next.js Web Surfaces] --> Gateway[API Gateway]
   Gateway --> Auth[Auth Service]
   Gateway --> Restaurant[Restaurant Service]
   Gateway --> Orders[Order Service]
@@ -25,11 +24,10 @@ flowchart LR
 
 ## Roles
 
-- Platform owner: full control over tenants, languages, billing, and global settings.
+- Platform roles: `platform_owner`, `platform_admin`, `support_agent`, `finance_admin`, and `translation_manager`.
 - Restaurant owner: manages restaurant profile, staff, menus, and operating language.
-- Accountant: sees financial summaries and invoices.
-- Staff: receives and updates orders.
-- Customer: registers from mobile, browses, orders, and tracks orders.
+- Restaurant staff roles: `manager`, `cashier`, `kitchen`, `waiter`, and `viewer`.
+- Customer: registers from the customer web surface, browses, orders, and tracks orders.
 
 ## Language Model
 

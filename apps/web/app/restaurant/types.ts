@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "@scanmenu/shared";
+import type { SupportedLanguage } from "@babili/shared";
 
 export type TabId =
   | "menu"

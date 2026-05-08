@@ -15,7 +15,7 @@ export interface PartnerContent {
 // TODO: Move partner copy to translation-service.
 const partnerContent: Record<string, PartnerContent> = {
   ar: {
-    eyebrow: "شبكة شركاء Scan Menu",
+    eyebrow: "شبكة شركاء بابلي",
     title: "مسارات دخول واضحة لكل من يخدم المطاعم",
     body: "يمكن لسائقي التوصيل، المزارعين، وأصحاب البقالة أو الموردين الدخول بحساباتهم الخاصة ومتابعة الطلبات والعروض والتوريد حسب صلاحياتهم.",
     cards: [
@@ -40,7 +40,7 @@ const partnerContent: Record<string, PartnerContent> = {
     ],
   },
   en: {
-    eyebrow: "Scan Menu partner network",
+    eyebrow: "Babili partner network",
     title: "Dedicated access for everyone who serves restaurants",
     body: "Delivery drivers, farmers, grocery owners, and suppliers can sign in to role-based workspaces for deliveries, supply, and restaurant procurement.",
     cards: [

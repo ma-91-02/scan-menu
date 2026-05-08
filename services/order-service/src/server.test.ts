@@ -22,7 +22,11 @@ before(() => {
       body += String(chunk);
     });
     req.on("end", () => {
-      const input = JSON.parse(body) as { text: string; sourceLanguage: string; targetLanguage: string };
+      const input = JSON.parse(body) as {
+        text: string;
+        sourceLanguage: string;
+        targetLanguage: string;
+      };
       res.setHeader("Content-Type", "application/json");
       res.end(
         JSON.stringify({
@@ -31,9 +35,9 @@ before(() => {
             sourceLanguage: input.sourceLanguage,
             targetLanguage: input.targetLanguage,
             translatedText: "без лука",
-            provider: "test"
-          }
-        })
+            provider: "test",
+          },
+        }),
       );
     });
   }).listen(0);
@@ -66,10 +70,10 @@ test("creates orders preserving customer and restaurant language output", async 
         {
           menuItemId: "mi_salmon_bowl",
           quantity: 1,
-          customerNote: "بدون بصل"
-        }
-      ]
-    })
+          customerNote: "بدون بصل",
+        },
+      ],
+    }),
   });
   const payload = await response.json();
   const line = payload.data.lines[0];
@@ -87,11 +91,14 @@ test("creates orders preserving customer and restaurant language output", async 
 });
 
 test("updates kitchen line status and marks order ready", async () => {
-  const response = await fetch(`${orderUrl}/${createdOrderId}/lines/mi_salmon_bowl/status`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kitchenStatus: "ready" })
-  });
+  const response = await fetch(
+    `${orderUrl}/${createdOrderId}/lines/mi_salmon_bowl/status`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kitchenStatus: "ready" }),
+    },
+  );
   const payload = await response.json();
 
   assert.equal(response.status, 200);
@@ -103,7 +110,7 @@ test("updates cashier payment status", async () => {
   const response = await fetch(`${orderUrl}/${createdOrderId}/payment`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paymentMethod: "card", paymentStatus: "paid" })
+    body: JSON.stringify({ paymentMethod: "card", paymentStatus: "paid" }),
   });
   const payload = await response.json();
 
@@ -113,7 +120,9 @@ test("updates cashier payment status", async () => {
 });
 
 test("deletes orders for a removed restaurant", async () => {
-  const deleteResponse = await fetch(`${orderUrl}/restaurants/rst_bistro_01`, { method: "DELETE" });
+  const deleteResponse = await fetch(`${orderUrl}/restaurants/rst_bistro_01`, {
+    method: "DELETE",
+  });
   const deletePayload = await deleteResponse.json();
   const listResponse = await fetch(`${orderUrl}/?restaurantId=rst_bistro_01`);
   const listPayload = await listResponse.json();

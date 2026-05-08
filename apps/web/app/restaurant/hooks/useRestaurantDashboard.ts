@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supportedLanguages, type SupportedLanguage } from "@scanmenu/shared";
+import { supportedLanguages, type SupportedLanguage } from "@babili/shared";
 import { fetchBootstrapData } from "../api/restaurant-dashboard-api";
 import {
   defaultOwnerLanguage,

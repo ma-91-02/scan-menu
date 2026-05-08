@@ -3,8 +3,8 @@ import type {
   IngredientTaxonomyItem,
   MenuSectionTaxonomyItem,
   ModifierTaxonomyItem,
-  ScanMenuLanguage,
-  ScanMenuLanguageCode,
+  BabiliLanguage,
+  BabiliLanguageCode,
   TranslationCatalogItem,
 } from "./translation-catalog.js";
 
@@ -27,14 +27,14 @@ type TranslatableItem = {
 };
 
 export class TranslationCoverageValidator {
-  private readonly requiredCodes: ScanMenuLanguageCode[];
+  private readonly requiredCodes: BabiliLanguageCode[];
   private readonly rtlCodes = ["ar", "ur", "fa", "he"];
 
-  constructor(languages: ScanMenuLanguage[]) {
+  constructor(languages: BabiliLanguage[]) {
     this.requiredCodes = languages.map((language) => language.code);
   }
 
-  validateLanguages(languages: ScanMenuLanguage[]): TranslationCoverageResult {
+  validateLanguages(languages: BabiliLanguage[]): TranslationCoverageResult {
     const issues: TranslationCoverageIssue[] = [];
     const actualCodes = languages.map((language) => language.code);
 

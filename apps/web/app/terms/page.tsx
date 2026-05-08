@@ -15,7 +15,7 @@ export default async function TermsPage({ searchParams }: LegalPageProps) {
   return (
     <main className="legal-page" dir={direction}>
       <a className="public-brand" href={`/?lang=${language}`}>
-        Scan Menu
+        {copy.brandName}
       </a>
       <article>
         <p>{copy.version}</p>
@@ -35,11 +35,12 @@ function legalCopy(language: string) {
   if (language === "ar") {
     return {
       version: "الإصدار 1.0",
-      termsTitle: "شروط استخدام Scan Menu",
+      brandName: "بابلي",
+      termsTitle: "شروط استخدام بابلي",
       termsSections: [
         {
           title: "طبيعة الخدمة",
-          body: "Scan Menu منصة SaaS لتمكين المطاعم من إدارة قوائم متعددة اللغات واستقبال الطلبات بلغة يفهمها فريق المطعم.",
+          body: "بابلي منصة SaaS لتمكين المطاعم من إدارة قوائم متعددة اللغات واستقبال الطلبات بلغة يفهمها فريق المطعم.",
         },
         {
           title: "مسؤولية صاحب المطعم",
@@ -63,7 +64,7 @@ function legalCopy(language: string) {
         },
         {
           title: "حدود المسؤولية",
-          body: "تقدم الخدمة كما هي ضمن الحدود القانونية، ولا تتحمل Scan Menu مسؤولية أخطاء بيانات المطعم التي يدخلها صاحب الحساب.",
+          body: "تقدم الخدمة كما هي ضمن الحدود القانونية، ولا تتحمل بابلي مسؤولية أخطاء بيانات المطعم التي يدخلها صاحب الحساب.",
         },
       ],
     };
@@ -71,11 +72,12 @@ function legalCopy(language: string) {
 
   return {
     version: "Version 1.0",
-    termsTitle: "Scan Menu Terms of Use",
+    brandName: "Babili",
+    termsTitle: "Babili Terms of Use",
     termsSections: [
       {
         title: "Service",
-        body: "Scan Menu is a SaaS platform for restaurants to manage multilingual menus and receive orders in the language used by their team.",
+        body: "Babili is a SaaS platform for restaurants to manage multilingual menus and receive orders in the language used by their team.",
       },
       {
         title: "Restaurant responsibility",
@@ -99,7 +101,7 @@ function legalCopy(language: string) {
       },
       {
         title: "Liability",
-        body: "The service is provided within legal limits, and Scan Menu is not responsible for incorrect restaurant content entered by account owners.",
+        body: "The service is provided within legal limits, and Babili is not responsible for incorrect restaurant content entered by account owners.",
       },
     ],
   };

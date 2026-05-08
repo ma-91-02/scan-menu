@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { loginRequest, resendVerificationRequest } from "../../lib/auth-api";
 import { getLoginCopy } from "../../lib/auth-copy";
-
-const sessionStorageKey = "scanmenu-session";
+import { storageKeys } from "../../lib/storage-keys";
 
 export function useLoginForm(preferredLanguage: string) {
   const [status, setStatus] = useState("");
@@ -41,7 +40,7 @@ export function useLoginForm(preferredLanguage: string) {
     }
 
     setStatus(copy.welcome);
-    localStorage.setItem(sessionStorageKey, payload.data.session.id);
+    localStorage.setItem(storageKeys.session, payload.data.session.id);
     window.location.href = payload.data.redirectTo;
   }
 

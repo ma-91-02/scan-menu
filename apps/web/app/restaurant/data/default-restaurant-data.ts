@@ -3,9 +3,10 @@ import type {
   RestaurantProfile,
   StaffFormState,
 } from "../types";
+import { storageKeys } from "../../lib/storage-keys";
 
 export const fallbackRestaurantId = "rst_bistro_01";
-export const sessionStorageKey = "scanmenu-session";
+export const sessionStorageKey = storageKeys.session;
 export const defaultOwnerLanguage = "ru";
 export const defaultRestaurantCurrency = "USD";
 

@@ -13,7 +13,11 @@ before(() => {
     res.setHeader("Content-Type", "application/json");
 
     if (req.url === "/languages") {
-      res.end(JSON.stringify({ data: [{ code: "ar", nativeName: "العربية", direction: "rtl" }] }));
+      res.end(
+        JSON.stringify({
+          data: [{ code: "ar", nativeName: "العربية", direction: "rtl" }],
+        }),
+      );
       return;
     }
 
@@ -28,7 +32,7 @@ before(() => {
     auth: backendUrl,
     restaurants: backendUrl,
     orders: backendUrl,
-    translations: backendUrl
+    translations: backendUrl,
   }).listen(0);
 
   const gatewayAddress = gateway.address();

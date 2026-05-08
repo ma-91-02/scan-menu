@@ -15,7 +15,7 @@ export default async function PrivacyPage({ searchParams }: LegalPageProps) {
   return (
     <main className="legal-page" dir={direction}>
       <a className="public-brand" href={`/?lang=${language}`}>
-        Scan Menu
+        {copy.brandName}
       </a>
       <article>
         <p>{copy.version}</p>
@@ -35,7 +35,8 @@ function privacyCopy(language: string) {
   if (language === "ar") {
     return {
       version: "الإصدار 1.0",
-      title: "سياسة خصوصية Scan Menu",
+      brandName: "بابلي",
+      title: "سياسة خصوصية بابلي",
       sections: [
         {
           title: "البيانات التي نجمعها",
@@ -67,7 +68,7 @@ function privacyCopy(language: string) {
         },
         {
           title: "الدعم",
-          body: "يمكن التواصل مع دعم Scan Menu لأي طلبات خصوصية أو حذف بيانات.",
+          body: "يمكن التواصل مع دعم بابلي لأي طلبات خصوصية أو حذف بيانات.",
         },
       ],
     };
@@ -75,7 +76,8 @@ function privacyCopy(language: string) {
 
   return {
     version: "Version 1.0",
-    title: "Scan Menu Privacy Policy",
+    brandName: "Babili",
+    title: "Babili Privacy Policy",
     sections: [
       {
         title: "Data we collect",
@@ -107,7 +109,7 @@ function privacyCopy(language: string) {
       },
       {
         title: "Support",
-        body: "Contact Scan Menu support for privacy, deletion, or data requests.",
+        body: "Contact Babili support for privacy, deletion, or data requests.",
       },
     ],
   };

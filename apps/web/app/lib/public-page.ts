@@ -1,7 +1,7 @@
 import type {
   LocalizedPublicPageContent,
   SupportedLanguage,
-} from "@scanmenu/shared";
+} from "@babili/shared";
 import { flagForLanguage } from "./flags";
 
 export interface LanguageOption {

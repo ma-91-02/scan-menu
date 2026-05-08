@@ -2,13 +2,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: scanmenu
-      POSTGRES_USER: scanmenu
+      POSTGRES_DB: babili
+      POSTGRES_USER: babili
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - scanmenu_postgres:/var/lib/postgresql/data
+      - babili_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scanmenu -d scanmenu"]
+      test: ["CMD-SHELL", "pg_isready -U babili -d babili"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -18,12 +18,12 @@ services:
     image: redis:7-alpine
 
   auth-service:
-    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
-    command: npm run start -w @scanmenu/auth-service
+    image: babili-app:${COOLIFY_RESOURCE_UUID:-local}
+    command: npm run start -w @babili/auth-service
     environment:
       NODE_ENV: production
       AUTH_SERVICE_PORT: 4101
-      DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
+      DATABASE_URL: postgresql://babili:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/babili
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?AUTH_TOKEN_SECRET is required}
       SESSION_SECRET: ${SESSION_SECRET:-}
       REDIS_URL: redis://redis:6379
@@ -34,9 +34,9 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-true}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-Scan Menu <noreply@your-ma.com>}
-      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-${SERVICE_URL_WEB:-https://scanmenu.your-ma.com}}
-      PUBLIC_API_URL: ${PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
+      SMTP_FROM: ${SMTP_FROM:-Babili <noreply@your-ma.com>}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-${SERVICE_URL_WEB:-https://admin.babili.your-ma.com}}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.babili.your-ma.com}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,12 +44,12 @@ services:
         condition: service_started
 
   restaurant-service:
-    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
-    command: npm run start -w @scanmenu/restaurant-service
+    image: babili-app:${COOLIFY_RESOURCE_UUID:-local}
+    command: npm run start -w @babili/restaurant-service
     environment:
       NODE_ENV: production
       RESTAURANT_SERVICE_PORT: 4102
-      DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
+      DATABASE_URL: postgresql://babili:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/babili
       TRANSLATION_SERVICE_URL: http://translation-service:4104
     depends_on:
       postgres:
@@ -58,12 +58,12 @@ services:
         condition: service_started
 
   order-service:
-    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
-    command: npm run start -w @scanmenu/order-service
+    image: babili-app:${COOLIFY_RESOURCE_UUID:-local}
+    command: npm run start -w @babili/order-service
     environment:
       NODE_ENV: production
       ORDER_SERVICE_PORT: 4103
-      DATABASE_URL: postgresql://scanmenu:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/scanmenu
+      DATABASE_URL: postgresql://babili:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/babili
       TRANSLATION_SERVICE_URL: http://translation-service:4104
       RESTAURANT_SERVICE_URL: http://restaurant-service:4102
     depends_on:
@@ -73,20 +73,20 @@ services:
         condition: service_started
 
   translation-service:
-    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
-    command: npm run start -w @scanmenu/translation-service
+    image: babili-app:${COOLIFY_RESOURCE_UUID:-local}
+    command: npm run start -w @babili/translation-service
     environment:
       NODE_ENV: production
       TRANSLATION_SERVICE_PORT: 4104
 
   api-gateway:
-    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
+    image: babili-app:${COOLIFY_RESOURCE_UUID:-local}
     build:
       context: .
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.babili.your-ma.com}}
         WEB_PUBLIC_API_URL: http://api-gateway:4000
-    command: npm run start -w @scanmenu/api-gateway
+    command: npm run start -w @babili/api-gateway
     environment:
       NODE_ENV: production
       API_GATEWAY_PORT: 4000
@@ -101,26 +101,26 @@ services:
       - translation-service
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.scanmenu-api.rule=Host(`api.scanmenu.your-ma.com`)"
-      - "traefik.http.routers.scanmenu-api.entrypoints=websecure"
-      - "traefik.http.routers.scanmenu-api.tls=true"
-      - "traefik.http.services.scanmenu-api.loadbalancer.server.port=4000"
+      - "traefik.http.routers.babili-api.rule=Host(`api.babili.your-ma.com`)"
+      - "traefik.http.routers.babili-api.entrypoints=websecure"
+      - "traefik.http.routers.babili-api.tls=true"
+      - "traefik.http.services.babili-api.loadbalancer.server.port=4000"
 
   web:
-    image: scanmenu-app:${COOLIFY_RESOURCE_UUID:-local}
-    command: npm run start -w @scanmenu/web
+    image: babili-app:${COOLIFY_RESOURCE_UUID:-local}
+    command: npm run start -w @babili/web
     environment:
       NODE_ENV: production
       WEB_PUBLIC_API_URL: http://api-gateway:4000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.scanmenu.your-ma.com}}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-${SERVICE_URL_API_GATEWAY:-https://api.babili.your-ma.com}}
     depends_on:
       - api-gateway
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.scanmenu-web.rule=Host(`scanmenu.your-ma.com`)"
-      - "traefik.http.routers.scanmenu-web.entrypoints=websecure"
-      - "traefik.http.routers.scanmenu-web.tls=true"
-      - "traefik.http.services.scanmenu-web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.babili-web.rule=Host(`admin.babili.your-ma.com`) || Host(`restaurant.babili.your-ma.com`) || Host(`staff.babili.your-ma.com`) || Host(`customer.babili.your-ma.com`)"
+      - "traefik.http.routers.babili-web.entrypoints=websecure"
+      - "traefik.http.routers.babili-web.tls=true"
+      - "traefik.http.services.babili-web.loadbalancer.server.port=3000"
 
 volumes:
-  scanmenu_postgres:
+  babili_postgres:

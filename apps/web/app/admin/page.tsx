@@ -37,7 +37,7 @@ export default async function AdminDashboardPage() {
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <strong>Scan Menu</strong>
+          <strong>بابلي</strong>
           <span>لوحة تحكم المنصة</span>
         </div>
 
@@ -63,7 +63,7 @@ export default async function AdminDashboardPage() {
       <section className="main">
         <header className="topbar">
           <div>
-            <h1>لوحة تحكم Scan Menu</h1>
+            <h1>لوحة تحكم بابلي</h1>
             <p className="muted">
               إدارة المطاعم، الطلبات، المستخدمين، ومحتوى الواجهة العامة.
             </p>

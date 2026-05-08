@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  getRestaurantPageCopy,
-  type SupportedLanguage,
-} from "@scanmenu/shared";
+import { getRestaurantPageCopy, type SupportedLanguage } from "@babili/shared";
 import { getRestaurantPage } from "../../../lib/api";
 
 const rtlLanguages = ["ar", "ur", "fa", "he"];

@@ -36,8 +36,8 @@ COPY services ./services
 COPY packages ./packages
 
 RUN npm ci --no-audit --no-fund
-RUN npm run build -w @scanmenu/shared
+RUN npm run build -w @babili/shared
 RUN npm run build --workspaces --if-present
 RUN npm prune --omit=dev --no-audit --no-fund && npm cache clean --force
 
-CMD ["npm", "run", "start", "-w", "@scanmenu/api-gateway"]
+CMD ["npm", "run", "start", "-w", "@babili/api-gateway"]

@@ -8,15 +8,15 @@ import {
   menuSectionTaxonomy,
   modifierTaxonomy,
   pickCatalogTranslation,
-  scanMenuLanguages,
+  babiliLanguages,
   uiTranslations,
-} from "@scanmenu/shared";
+} from "@babili/shared";
 import type {
   LanguageCode,
   LocalizedPublicPageContent,
   PublicPageContent,
-} from "@scanmenu/shared";
-import { pickLocalizedText, supportedLanguages } from "@scanmenu/shared";
+} from "@babili/shared";
+import { pickLocalizedText, supportedLanguages } from "@babili/shared";
 
 const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
   no_onions: {
@@ -120,9 +120,9 @@ const phrasebook: Record<string, Partial<Record<LanguageCode, string>>> = {
 let publicPageContent: PublicPageContent = {
   id: "public-home",
   brandName: {
-    ar: "Scan Menu",
-    en: "Scan Menu",
-    ru: "Scan Menu",
+    ar: "بابلي",
+    en: "Babili",
+    ru: "Бабили",
   },
   nav: {
     home: {
@@ -242,31 +242,31 @@ let publicPageContent: PublicPageContent = {
       th: "ให้ลูกค้าทุกคนสั่งอาหารด้วยภาษาของตนเอง ในขณะที่ร้านอาหารของคุณรับคำสั่งซื้อด้วยภาษาของคุณ",
     },
     subtitle: {
-      ar: "Scan Menu تربط العملاء والمطاعم عبر ترجمة مركزية، إدارة قوائم، طلبات مباشرة، وصلاحيات للموظفين والمحاسبين وأصحاب المطاعم.",
-      en: "Scan Menu connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
-      ru: "Scan Menu объединяет гостей и рестораны: переводы, меню, заказы и роли для сотрудников, бухгалтеров и владельцев.",
-      tr: "Scan Menu, merkezi çeviri, menü yönetimi, canlı siparişler ve personel, muhasebeciler ve işletme sahipleri için roller ile müşterileri ve restoranları bir araya getirir.",
-      fr: "Scan Menu relie les clients et les restaurants grâce à une traduction centralisée, la gestion des menus, des commandes en temps réel et des rôles pour le personnel, les comptables et les propriétaires.",
-      es: "Scan Menu conecta a clientes y restaurantes con traducción centralizada, gestión de menús, pedidos en tiempo real y roles para el personal, contables y propietarios.",
-      de: "Scan Menu verbindet Gäste und Restaurants mit zentraler Übersetzung, Menüverwaltung, Live-Bestellungen und Rollen für Personal, Buchhalter und Eigentümer.",
-      it: "Scan Menu collega clienti e ristoranti con traduzione centralizzata, gestione del menu, ordini in tempo reale e ruoli per staff, contabili e proprietari.",
-      pt: "Scan Menu conecta clientes e restaurantes com tradução centralizada, gestão de menus, pedidos em tempo real e funções para funcionários, contadores e proprietários.",
-      zh: "Scan Menu 通过集中翻译、菜单管理、实时订单以及为员工、会计和餐厅老板设置角色，将顾客与餐厅连接起来。",
-      ja: "Scan Menu は、中央翻訳、メニュー管理、リアルタイム注文、スタッフ・会計・オーナー向けの役割機能で、顧客とレストランをつなぎます。",
-      ko: "Scan Menu는 중앙 번역, 메뉴 관리, 실시간 주문, 직원·회계·운영자를 위한 역할 기능을 통해 고객과 레스토랑을 연결합니다.",
-      hi: "Scan Menu ग्राहकों और रेस्तरां को केंद्रीय अनुवाद, मेनू प्रबंधन, लाइव ऑर्डर और स्टाफ, अकाउंटेंट और मालिकों के लिए भूमिकाओं के साथ जोड़ता है।",
-      ur: "Scan Menu مرکزی ترجمہ، مینو مینجمنٹ، لائیو آرڈرز اور عملے، اکاؤنٹنٹس اور مالکان کے لیے رولز کے ذریعے صارفین اور ریستورانز کو جوڑتا ہے۔",
-      fa: "Scan Menu مشتریان و رستوران‌ها را با ترجمه متمرکز، مدیریت منو، سفارش‌های زنده و نقش‌هایی برای کارکنان، حسابداران و مالکان به هم متصل می‌کند.",
-      he: "Scan Menu מחבר בין לקוחות למסעדות באמצעות תרגום מרכזי, ניהול תפריטים, הזמנות בזמן אמת ותפקידים לצוות, רואי חשבון ובעלים.",
-      id: "Scan Menu menghubungkan pelanggan dan restoran dengan terjemahan terpusat, manajemen menu, pesanan real-time, serta peran untuk staf, akuntan, dan pemilik.",
-      ms: "Scan Menu menghubungkan pelanggan dan restoran melalui terjemahan berpusat, pengurusan menu, pesanan masa nyata serta peranan untuk kakitangan, akauntan dan pemilik.",
-      uk: "Scan Menu поєднує гостей і ресторани за допомогою централізованого перекладу, управління меню, онлайн-замовлень і ролей для персоналу, бухгалтерів та власників.",
-      pl: "Scan Menu łączy klientów i restauracje dzięki centralnemu tłumaczeniu, zarządzaniu menu, zamówieniom na żywo oraz rolom dla personelu, księgowych i właścicieli.",
-      nl: "Scan Menu verbindt klanten en restaurants met centrale vertaling, menubeheer, live bestellingen en rollen voor personeel, boekhouders en eigenaren.",
-      sv: "Scan Menu kopplar samman gäster och restauranger med central översättning, menyhantering, livebeställningar och roller för personal, ekonomer och ägare.",
-      el: "Το Scan Menu συνδέει πελάτες και εστιατόρια με κεντρική μετάφραση, διαχείριση μενού, ζωντανές παραγγελίες και ρόλους για προσωπικό, λογιστές και ιδιοκτήτες.",
-      vi: "Scan Menu kết nối khách hàng và nhà hàng thông qua dịch thuật tập trung, quản lý menu, đơn hàng thời gian thực và các vai trò cho nhân viên, kế toán và chủ sở hữu.",
-      th: "Scan Menu เชื่อมต่อลูกค้าและร้านอาหารด้วยการแปลแบบศูนย์กลาง การจัดการเมนู คำสั่งซื้อแบบเรียลไทม์ และบทบาทสำหรับพนักงาน นักบัญชี และเจ้าของร้าน",
+      ar: "بابلي تربط العملاء والمطاعم عبر ترجمة مركزية، إدارة قوائم، طلبات مباشرة، وصلاحيات للموظفين والمحاسبين وأصحاب المطاعم.",
+      en: "Babili connects guests and restaurants with central translation, menu management, live orders, and roles for staff, accountants, and owners.",
+      ru: "Бабили объединяет гостей и рестораны: переводы, меню, заказы и роли для сотрудников, бухгалтеров и владельцев.",
+      tr: "Babili, merkezi çeviri, menü yönetimi, canlı siparişler ve personel, muhasebeciler ve işletme sahipleri için roller ile müşterileri ve restoranları bir araya getirir.",
+      fr: "Babili relie les clients et les restaurants grâce à une traduction centralisée, la gestion des menus, des commandes en temps réel et des rôles pour le personnel, les comptables et les propriétaires.",
+      es: "Babili conecta a clientes y restaurantes con traducción centralizada, gestión de menús, pedidos en tiempo real y roles para el personal, contables y propietarios.",
+      de: "Babili verbindet Gäste und Restaurants mit zentraler Übersetzung, Menüverwaltung, Live-Bestellungen und Rollen für Personal, Buchhalter und Eigentümer.",
+      it: "Babili collega clienti e ristoranti con traduzione centralizzata, gestione del menu, ordini in tempo reale e ruoli per staff, contabili e proprietari.",
+      pt: "Babili conecta clientes e restaurantes com tradução centralizada, gestão de menus, pedidos em tempo real e funções para funcionários, contadores e proprietários.",
+      zh: "Babili 通过集中翻译、菜单管理、实时订单以及为员工、会计和餐厅老板设置角色，将顾客与餐厅连接起来。",
+      ja: "Babili は、中央翻訳、メニュー管理、リアルタイム注文、スタッフ・会計・オーナー向けの役割機能で、顧客とレストランをつなぎます。",
+      ko: "Babili는 중앙 번역, 메뉴 관리, 실시간 주문, 직원·회계·운영자를 위한 역할 기능을 통해 고객과 레스토랑을 연결합니다.",
+      hi: "Babili ग्राहकों और रेस्तरां को केंद्रीय अनुवाद, मेनू प्रबंधन, लाइव ऑर्डर और स्टाफ, अकाउंटेंट और मालिकों के लिए भूमिकाओं के साथ जोड़ता है।",
+      ur: "Babili مرکزی ترجمہ، مینو مینجمنٹ، لائیو آرڈرز اور عملے، اکاؤنٹنٹس اور مالکان کے لیے رولز کے ذریعے صارفین اور ریستورانز کو جوڑتا ہے۔",
+      fa: "Babili مشتریان و رستوران‌ها را با ترجمه متمرکز، مدیریت منو، سفارش‌های زنده و نقش‌هایی برای کارکنان، حسابداران و مالکان به هم متصل می‌کند.",
+      he: "Babili מחבר בין לקוחות למסעדות באמצעות תרגום מרכזי, ניהול תפריטים, הזמנות בזמן אמת ותפקידים לצוות, רואי חשבון ובעלים.",
+      id: "Babili menghubungkan pelanggan dan restoran dengan terjemahan terpusat, manajemen menu, pesanan real-time, serta peran untuk staf, akuntan, dan pemilik.",
+      ms: "Babili menghubungkan pelanggan dan restoran melalui terjemahan berpusat, pengurusan menu, pesanan masa nyata serta peranan untuk kakitangan, akauntan dan pemilik.",
+      uk: "Babili поєднує гостей і ресторани за допомогою централізованого перекладу, управління меню, онлайн-замовлень і ролей для персоналу, бухгалтерів та власників.",
+      pl: "Babili łączy klientów i restauracje dzięki centralnemu tłumaczeniu, zarządzaniu menu, zamówieniom na żywo oraz rolom dla personelu, księgowych i właścicieli.",
+      nl: "Babili verbindt klanten en restaurants met centrale vertaling, menubeheer, live bestellingen en rollen voor personeel, boekhouders en eigenaren.",
+      sv: "Babili kopplar samman gäster och restauranger med central översättning, menyhantering, livebeställningar och roller för personal, ekonomer och ägare.",
+      el: "Το Babili συνδέει πελάτες και εστιατόρια με κεντρική μετάφραση, διαχείριση μενού, ζωντανές παραγγελίες και ρόλους για προσωπικό, λογιστές και ιδιοκτήτες.",
+      vi: "Babili kết nối khách hàng và nhà hàng thông qua dịch thuật tập trung, quản lý menu, đơn hàng thời gian thực và các vai trò cho nhân viên, kế toán và chủ sở hữu.",
+      th: "Babili เชื่อมต่อลูกค้าและร้านอาหารด้วยการแปลแบบศูนย์กลาง การจัดการเมนู คำสั่งซื้อแบบเรียลไทม์ และบทบาทสำหรับพนักงาน นักบัญชี และเจ้าของร้าน",
     },
     primaryAction: {
       ar: "ابدأ لمطعمك",
@@ -467,9 +467,9 @@ let publicPageContent: PublicPageContent = {
   ],
   about: {
     title: {
-      ar: "Scan Menu ليست صفحة تعريف فقط، بل نظام تشغيل للمطاعم.",
-      en: "Scan Menu is not only a website. It is an operating system for restaurants.",
-      ru: "Scan Menu - не просто сайт, а операционная система для ресторанов.",
+      ar: "بابلي ليست صفحة تعريف فقط، بل نظام تشغيل للمطاعم.",
+      en: "Babili is not only a website. It is an operating system for restaurants.",
+      ru: "Бабили - не просто сайт, а операционная система для ресторанов.",
     },
     body: {
       ar: "يمكن لمالك المنصة التحكم بمحتوى الصفحة العامة، اللغات، الأسعار، وواجهات المطاعم من لوحة التحكم.",
@@ -716,7 +716,7 @@ export function createApp() {
   app.use(express.json());
 
   app.get("/languages", (_req, res) => {
-    res.json({ data: scanMenuLanguages });
+    res.json({ data: babiliLanguages });
   });
 
   app.get("/translations", (_req, res) => {
@@ -842,7 +842,7 @@ export function createApp() {
         sourceLanguage: req.body.sourceLanguage ?? "auto",
         targetLanguage,
         translatedText,
-        provider: phrase ? "scanmenu-phrasebook" : "source-fallback",
+        provider: phrase ? "babili-phrasebook" : "source-fallback",
       },
     });
   });
@@ -875,7 +875,7 @@ function completeLocalizedContent(value: unknown): unknown {
       record.en ?? record.ar ?? record.ru ?? Object.values(record)[0] ?? "",
     );
     return Object.fromEntries(
-      scanMenuLanguages.map((language) => [
+      babiliLanguages.map((language) => [
         language.code,
         String(record[language.code] ?? fallback),
       ]),
@@ -891,7 +891,7 @@ function completeLocalizedContent(value: unknown): unknown {
 }
 
 function looksLikeLocalizedText(record: Record<string, unknown>) {
-  return scanMenuLanguages.some(
+  return babiliLanguages.some(
     (language) => language.code !== "id" && language.code in record,
   );
 }
@@ -966,7 +966,7 @@ export function localizePublicPage(
 
 const app = createApp();
 
-if (!process.env.SCANMENU_SKIP_LISTEN) {
+if (!process.env.BABILI_SKIP_LISTEN) {
   app.listen(port, () => {
     console.log(`Translation service listening on http://localhost:${port}`);
   });

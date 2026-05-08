@@ -6,10 +6,10 @@ import {
   menuSectionTaxonomy,
   modifierTaxonomy,
   restaurantPageTranslationKeys,
-  scanMenuLanguages,
+  babiliLanguages,
   TranslationCoverageValidator,
   uiTranslations,
-} from "@scanmenu/shared";
+} from "@babili/shared";
 import { getPublicPageContentForCoverage } from "./server.js";
 
 const requiredLanguageCodes = [
@@ -72,18 +72,18 @@ function assertCoveragePasses(
   assert.equal(result.ok, true);
 }
 
-const validator = new TranslationCoverageValidator(scanMenuLanguages);
+const validator = new TranslationCoverageValidator(babiliLanguages);
 
 test("supported language list contains every required language", () => {
   assert.deepEqual(
-    scanMenuLanguages.map((language) => language.code),
+    babiliLanguages.map((language) => language.code),
     requiredLanguageCodes,
   );
-  assertCoveragePasses(validator.validateLanguages(scanMenuLanguages));
+  assertCoveragePasses(validator.validateLanguages(babiliLanguages));
 });
 
 test("rtl languages are marked correctly", () => {
-  const rtlLanguages = scanMenuLanguages
+  const rtlLanguages = babiliLanguages
     .filter((language) => language.direction === "rtl")
     .map((language) => language.code);
   assert.deepEqual(rtlLanguages, ["ar", "ur", "fa", "he"]);

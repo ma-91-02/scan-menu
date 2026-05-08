@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supportedLanguages, type SupportedLanguage } from "@scanmenu/shared";
+import { supportedLanguages, type SupportedLanguage } from "@babili/shared";
+import { migrateLegacyStorageKey, storageKeys } from "../lib/storage-keys";
 
 type ViewId = "menu" | "waiter" | "discounts" | "settings";
 type AuthMode = "login" | "register";
@@ -46,9 +47,9 @@ interface CustomerOrder {
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const languageStorageKey = "scanmenu-customer-language";
-const customerStorageKey = "scanmenu-customer-user";
-const sessionStorageKey = "scanmenu-session";
+const languageStorageKey = storageKeys.customerLanguage;
+const customerStorageKey = storageKeys.customerUser;
+const sessionStorageKey = storageKeys.session;
 
 const fallbackRestaurants: Restaurant[] = [
   {
@@ -265,8 +266,13 @@ export default function CustomerPage() {
 
     const params = new URLSearchParams(window.location.search);
     const urlLanguage = params.get("lang");
-    const storedLanguage = localStorage.getItem(languageStorageKey);
-    const storedCustomer = localStorage.getItem(customerStorageKey);
+    migrateLegacyStorageKey("session");
+    const storedLanguage = localStorage.getItem(
+      migrateLegacyStorageKey("customerLanguage"),
+    );
+    const storedCustomer = localStorage.getItem(
+      migrateLegacyStorageKey("customerUser"),
+    );
     const restaurantFromQr = params.get("restaurantId");
     const tableFromQr = params.get("table");
 
@@ -536,7 +542,7 @@ export default function CustomerPage() {
     return (
       <main className="customer-app-shell">
         <section className="customer-phone language-onboarding">
-          <span>Scan Menu</span>
+          <span>Babili</span>
           <h1>{translations.ar.chooseLanguage}</h1>
           <p>{translations.ar.languageHint}</p>
           <div className="language-choice-grid">
@@ -560,7 +566,7 @@ export default function CustomerPage() {
       <section className="customer-phone">
         <header className="customer-mobile-top">
           <div>
-            <span>Scan Menu</span>
+            <span>Babili</span>
             <strong>{selectedRestaurant.name}</strong>
           </div>
           <button type="button" onClick={() => setActiveView("settings")}>

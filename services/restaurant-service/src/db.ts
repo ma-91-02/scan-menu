@@ -1,5 +1,10 @@
 import { Pool } from "pg";
-import type { LocalizedText, MenuCategory, MenuItem, SubscriptionPlan } from "@scanmenu/shared";
+import type {
+  LocalizedText,
+  MenuCategory,
+  MenuItem,
+  SubscriptionPlan,
+} from "@babili/shared";
 
 export interface RestaurantRecord {
   id: string;
@@ -37,7 +42,7 @@ export async function initRestaurantDatabase() {
   if (!pool) return;
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS scanmenu_restaurants (
+    CREATE TABLE IF NOT EXISTS babili_restaurants (
       id text PRIMARY KEY,
       name text NOT NULL,
       operating_language text NOT NULL,
@@ -56,18 +61,18 @@ export async function initRestaurantDatabase() {
       updated_at timestamptz NOT NULL DEFAULT now()
     );
 
-    CREATE TABLE IF NOT EXISTS scanmenu_menu_categories (
+    CREATE TABLE IF NOT EXISTS babili_menu_categories (
       id text PRIMARY KEY,
-      restaurant_id text NOT NULL REFERENCES scanmenu_restaurants(id) ON DELETE CASCADE,
+      restaurant_id text NOT NULL REFERENCES babili_restaurants(id) ON DELETE CASCADE,
       catalog_key text,
       name jsonb NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
 
-    CREATE TABLE IF NOT EXISTS scanmenu_menu_items (
+    CREATE TABLE IF NOT EXISTS babili_menu_items (
       id text PRIMARY KEY,
-      restaurant_id text NOT NULL REFERENCES scanmenu_restaurants(id) ON DELETE CASCADE,
-      category_id text REFERENCES scanmenu_menu_categories(id) ON DELETE SET NULL,
+      restaurant_id text NOT NULL REFERENCES babili_restaurants(id) ON DELETE CASCADE,
+      category_id text REFERENCES babili_menu_categories(id) ON DELETE SET NULL,
       ingredient_ids jsonb NOT NULL DEFAULT '[]',
       name jsonb NOT NULL,
       description jsonb NOT NULL DEFAULT '{}',
@@ -79,9 +84,9 @@ export async function initRestaurantDatabase() {
       updated_at timestamptz NOT NULL DEFAULT now()
     );
 
-    CREATE TABLE IF NOT EXISTS scanmenu_restaurant_tables (
+    CREATE TABLE IF NOT EXISTS babili_restaurant_tables (
       id text PRIMARY KEY,
-      restaurant_id text NOT NULL REFERENCES scanmenu_restaurants(id) ON DELETE CASCADE,
+      restaurant_id text NOT NULL REFERENCES babili_restaurants(id) ON DELETE CASCADE,
       number text NOT NULL,
       qr_path text NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now(),
@@ -89,12 +94,18 @@ export async function initRestaurantDatabase() {
     );
   `);
 
-  await pool.query("ALTER TABLE scanmenu_restaurants ADD COLUMN IF NOT EXISTS default_currency text NOT NULL DEFAULT 'USD'");
-  await pool.query("ALTER TABLE scanmenu_restaurants ADD COLUMN IF NOT EXISTS logo_url text");
-  await pool.query("ALTER TABLE scanmenu_menu_categories ADD COLUMN IF NOT EXISTS catalog_key text");
+  await pool.query(
+    "ALTER TABLE babili_restaurants ADD COLUMN IF NOT EXISTS default_currency text NOT NULL DEFAULT 'USD'",
+  );
+  await pool.query(
+    "ALTER TABLE babili_restaurants ADD COLUMN IF NOT EXISTS logo_url text",
+  );
+  await pool.query(
+    "ALTER TABLE babili_menu_categories ADD COLUMN IF NOT EXISTS catalog_key text",
+  );
 
   await pool.query(
-    `INSERT INTO scanmenu_restaurants (
+    `INSERT INTO babili_restaurants (
       id, name, operating_language, supported_customer_languages, status,
       owner_first_name, owner_last_name, email, phone, address, country, city, selected_plan, default_currency
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
@@ -113,8 +124,8 @@ export async function initRestaurantDatabase() {
       "Russia",
       "Moscow",
       "premium",
-      "RUB"
-    ]
+      "RUB",
+    ],
   );
 
   for (const name of ["r1", "r2", "r3", "r4", "r5"]) {
@@ -123,33 +134,64 @@ export async function initRestaurantDatabase() {
       name,
       operatingLanguage: "ar",
       currency: "USD",
-      supportedCustomerLanguages: ["ar", "en", "ru", "tr", "fr", "es", "de", "it", "pt", "zh", "ja", "ko", "hi", "ur", "fa", "he", "id", "ms", "uk", "pl", "nl", "sv", "el", "vi", "th"],
+      supportedCustomerLanguages: [
+        "ar",
+        "en",
+        "ru",
+        "tr",
+        "fr",
+        "es",
+        "de",
+        "it",
+        "pt",
+        "zh",
+        "ja",
+        "ko",
+        "hi",
+        "ur",
+        "fa",
+        "he",
+        "id",
+        "ms",
+        "uk",
+        "pl",
+        "nl",
+        "sv",
+        "el",
+        "vi",
+        "th",
+      ],
       status: "active",
       ownerFirstName: name,
       ownerLastName: "",
-      email: `${name}@scanmenu.local`,
+      email: `${name}@babili.local`,
       phone: "",
       address: "",
       country: "",
       city: "",
-      selectedPlan: "basic"
+      selectedPlan: "basic",
     });
   }
 }
 
 export async function getRestaurantsDb() {
-  const result = await pool!.query("SELECT * FROM scanmenu_restaurants ORDER BY name");
+  const result = await pool!.query(
+    "SELECT * FROM babili_restaurants ORDER BY name",
+  );
   return result.rows.map(mapRestaurant);
 }
 
 export async function getRestaurantDb(id: string) {
-  const result = await pool!.query("SELECT * FROM scanmenu_restaurants WHERE id = $1", [id]);
+  const result = await pool!.query(
+    "SELECT * FROM babili_restaurants WHERE id = $1",
+    [id],
+  );
   return result.rows[0] ? mapRestaurant(result.rows[0]) : undefined;
 }
 
 export async function createRestaurantDb(entry: RestaurantRecord) {
   const result = await pool!.query(
-    `INSERT INTO scanmenu_restaurants (
+    `INSERT INTO babili_restaurants (
       id, name, operating_language, default_currency, logo_url, supported_customer_languages, status,
       owner_first_name, owner_last_name, email, phone, address, country, city, selected_plan
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
@@ -185,18 +227,21 @@ export async function createRestaurantDb(entry: RestaurantRecord) {
       entry.address,
       entry.country,
       entry.city,
-      entry.selectedPlan
-    ]
+      entry.selectedPlan,
+    ],
   );
   return mapRestaurant(result.rows[0]);
 }
 
-export async function updateRestaurantProfileDb(id: string, patch: Partial<RestaurantRecord>) {
+export async function updateRestaurantProfileDb(
+  id: string,
+  patch: Partial<RestaurantRecord>,
+) {
   const current = await getRestaurantDb(id);
   if (!current) return undefined;
   const next = { ...current, ...patch };
   const result = await pool!.query(
-    `UPDATE scanmenu_restaurants SET
+    `UPDATE babili_restaurants SET
       name = $2,
       operating_language = $3,
       default_currency = $4,
@@ -229,49 +274,73 @@ export async function updateRestaurantProfileDb(id: string, patch: Partial<Resta
       next.address,
       next.country,
       next.city,
-      next.selectedPlan
-    ]
+      next.selectedPlan,
+    ],
   );
   return mapRestaurant(result.rows[0]);
 }
 
 export async function getCategoriesDb(restaurantId: string) {
-  const result = await pool!.query("SELECT * FROM scanmenu_menu_categories WHERE restaurant_id = $1 ORDER BY created_at", [restaurantId]);
+  const result = await pool!.query(
+    "SELECT * FROM babili_menu_categories WHERE restaurant_id = $1 ORDER BY created_at",
+    [restaurantId],
+  );
   return result.rows.map(mapCategory);
 }
 
 export async function createCategoryDb(entry: MenuCategory) {
   await pool!.query(
-    "INSERT INTO scanmenu_menu_categories (id, restaurant_id, catalog_key, name) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET catalog_key = EXCLUDED.catalog_key, name = EXCLUDED.name",
-    [entry.id, entry.restaurantId, entry.catalogKey ?? null, JSON.stringify(entry.name)]
+    "INSERT INTO babili_menu_categories (id, restaurant_id, catalog_key, name) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET catalog_key = EXCLUDED.catalog_key, name = EXCLUDED.name",
+    [
+      entry.id,
+      entry.restaurantId,
+      entry.catalogKey ?? null,
+      JSON.stringify(entry.name),
+    ],
   );
   return entry;
 }
 
 export async function updateCategoryDb(entry: MenuCategory) {
   const result = await pool!.query(
-    "UPDATE scanmenu_menu_categories SET catalog_key = $3, name = $4 WHERE id = $1 AND restaurant_id = $2 RETURNING *",
-    [entry.id, entry.restaurantId, entry.catalogKey ?? null, JSON.stringify(entry.name)]
+    "UPDATE babili_menu_categories SET catalog_key = $3, name = $4 WHERE id = $1 AND restaurant_id = $2 RETURNING *",
+    [
+      entry.id,
+      entry.restaurantId,
+      entry.catalogKey ?? null,
+      JSON.stringify(entry.name),
+    ],
   );
   return result.rows[0] ? mapCategory(result.rows[0]) : undefined;
 }
 
-export async function deleteCategoryDb(restaurantId: string, categoryId: string) {
-  await pool!.query("DELETE FROM scanmenu_menu_categories WHERE id = $1 AND restaurant_id = $2", [categoryId, restaurantId]);
+export async function deleteCategoryDb(
+  restaurantId: string,
+  categoryId: string,
+) {
+  await pool!.query(
+    "DELETE FROM babili_menu_categories WHERE id = $1 AND restaurant_id = $2",
+    [categoryId, restaurantId],
+  );
 }
 
 export async function deleteRestaurantDb(restaurantId: string) {
-  await pool!.query("DELETE FROM scanmenu_restaurants WHERE id = $1", [restaurantId]);
+  await pool!.query("DELETE FROM babili_restaurants WHERE id = $1", [
+    restaurantId,
+  ]);
 }
 
 export async function getMenuItemsDb(restaurantId: string) {
-  const result = await pool!.query("SELECT * FROM scanmenu_menu_items WHERE restaurant_id = $1 ORDER BY created_at", [restaurantId]);
+  const result = await pool!.query(
+    "SELECT * FROM babili_menu_items WHERE restaurant_id = $1 ORDER BY created_at",
+    [restaurantId],
+  );
   return result.rows.map(mapMenuItem);
 }
 
 export async function createMenuItemDb(item: MenuItem) {
   await pool!.query(
-    `INSERT INTO scanmenu_menu_items (
+    `INSERT INTO babili_menu_items (
       id, restaurant_id, category_id, ingredient_ids, name, description, image_url, price, currency, is_available
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     ON CONFLICT (id) DO UPDATE SET
@@ -294,15 +363,15 @@ export async function createMenuItemDb(item: MenuItem) {
       item.imageUrl ?? null,
       item.price,
       item.currency,
-      item.isAvailable
-    ]
+      item.isAvailable,
+    ],
   );
   return item;
 }
 
 export async function updateMenuItemDb(item: MenuItem) {
   const result = await pool!.query(
-    `UPDATE scanmenu_menu_items SET
+    `UPDATE babili_menu_items SET
       category_id = $3,
       ingredient_ids = $4,
       name = $5,
@@ -324,28 +393,37 @@ export async function updateMenuItemDb(item: MenuItem) {
       item.imageUrl ?? null,
       item.price,
       item.currency,
-      item.isAvailable
-    ]
+      item.isAvailable,
+    ],
   );
   return result.rows[0] ? mapMenuItem(result.rows[0]) : undefined;
 }
 
-export async function deleteMenuItemDb(restaurantId: string, menuItemId: string) {
-  await pool!.query("DELETE FROM scanmenu_menu_items WHERE id = $1 AND restaurant_id = $2", [menuItemId, restaurantId]);
+export async function deleteMenuItemDb(
+  restaurantId: string,
+  menuItemId: string,
+) {
+  await pool!.query(
+    "DELETE FROM babili_menu_items WHERE id = $1 AND restaurant_id = $2",
+    [menuItemId, restaurantId],
+  );
 }
 
 export async function getTablesDb(restaurantId: string) {
-  const result = await pool!.query("SELECT * FROM scanmenu_restaurant_tables WHERE restaurant_id = $1 ORDER BY number", [restaurantId]);
+  const result = await pool!.query(
+    "SELECT * FROM babili_restaurant_tables WHERE restaurant_id = $1 ORDER BY number",
+    [restaurantId],
+  );
   return result.rows.map(mapTable);
 }
 
 export async function createTableDb(table: RestaurantTableRecord) {
   const result = await pool!.query(
-    `INSERT INTO scanmenu_restaurant_tables (id, restaurant_id, number, qr_path)
+    `INSERT INTO babili_restaurant_tables (id, restaurant_id, number, qr_path)
      VALUES ($1,$2,$3,$4)
      ON CONFLICT (restaurant_id, number) DO UPDATE SET qr_path = EXCLUDED.qr_path
      RETURNING *`,
-    [table.id, table.restaurantId, table.number, table.qrPath]
+    [table.id, table.restaurantId, table.number, table.qrPath],
   );
   return mapTable(result.rows[0]);
 }
@@ -357,7 +435,9 @@ function mapRestaurant(row: Record<string, unknown>): RestaurantRecord {
     operatingLanguage: String(row.operating_language),
     currency: String(row.default_currency ?? "USD"),
     logoUrl: row.logo_url ? String(row.logo_url) : undefined,
-    supportedCustomerLanguages: Array.isArray(row.supported_customer_languages) ? row.supported_customer_languages.map(String) : [],
+    supportedCustomerLanguages: Array.isArray(row.supported_customer_languages)
+      ? row.supported_customer_languages.map(String)
+      : [],
     status: String(row.status) as RestaurantRecord["status"],
     ownerFirstName: String(row.owner_first_name ?? ""),
     ownerLastName: String(row.owner_last_name ?? ""),
@@ -366,7 +446,9 @@ function mapRestaurant(row: Record<string, unknown>): RestaurantRecord {
     address: String(row.address ?? ""),
     country: String(row.country ?? ""),
     city: String(row.city ?? ""),
-    selectedPlan: String(row.selected_plan ?? "basic") as SubscriptionPlan["id"]
+    selectedPlan: String(
+      row.selected_plan ?? "basic",
+    ) as SubscriptionPlan["id"],
   };
 }
 
@@ -375,7 +457,7 @@ function mapCategory(row: Record<string, unknown>): MenuCategory {
     id: String(row.id),
     restaurantId: String(row.restaurant_id),
     catalogKey: row.catalog_key ? String(row.catalog_key) : undefined,
-    name: row.name as LocalizedText
+    name: row.name as LocalizedText,
   };
 }
 
@@ -384,13 +466,15 @@ function mapMenuItem(row: Record<string, unknown>): MenuItem {
     id: String(row.id),
     restaurantId: String(row.restaurant_id),
     categoryId: row.category_id ? String(row.category_id) : undefined,
-    ingredientIds: Array.isArray(row.ingredient_ids) ? row.ingredient_ids.map(String) : [],
+    ingredientIds: Array.isArray(row.ingredient_ids)
+      ? row.ingredient_ids.map(String)
+      : [],
     name: row.name as LocalizedText,
     description: row.description as LocalizedText,
     imageUrl: row.image_url ? String(row.image_url) : undefined,
     price: Number(row.price ?? 0),
     currency: String(row.currency ?? "USD") as MenuItem["currency"],
-    isAvailable: Boolean(row.is_available)
+    isAvailable: Boolean(row.is_available),
   };
 }
 
@@ -399,6 +483,6 @@ function mapTable(row: Record<string, unknown>): RestaurantTableRecord {
     id: String(row.id),
     restaurantId: String(row.restaurant_id),
     number: String(row.number),
-    qrPath: String(row.qr_path)
+    qrPath: String(row.qr_path),
   };
 }
